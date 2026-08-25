@@ -1,0 +1,1885 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Field Lab 3D — Electrodynamics Engine</title>
+<style>
+  :root{
+    --bg:#060b16; --bg-2:#0a1221; --panel:rgba(13,23,41,.86); --panel-strong:rgba(16,29,50,.97);
+    --line:rgba(145,183,223,.18); --line-bright:rgba(145,183,223,.34);
+    --text:#e8f2ff; --muted:#8fa7c4; --cyan:#65e7ff; --blue:#7c9cff; --warm:#ffb46b; --danger:#ff6d82; --green:#70e0b0;
+    --violet:#b98bff; --teal:#5fd8c4; --hinge:#93a0b8;
+    --radius:14px; font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; color:var(--text); background:var(--bg);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%;background:var(--bg);overflow:hidden}
+  button,input,select{font:inherit;color:inherit}
+  .app{height:100vh;display:grid;grid-template-columns:1fr 320px;grid-template-rows:56px 1fr;background:
+    radial-gradient(circle at 50% -20%, rgba(41,93,157,.18), transparent 45%),
+    linear-gradient(135deg,#060b16 0%,#091221 50%,#070d19 100%);}
+  .topbar{grid-column:1/3;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 18px;border-bottom:1px solid var(--line);background:rgba(5,10,20,.7);backdrop-filter:blur(18px);z-index:5}
+  .brand{display:flex;align-items:center;gap:10px}
+  .brand-mark{width:26px;height:26px;border:1px solid rgba(101,231,255,.5);border-radius:50%;position:relative;box-shadow:0 0 20px rgba(101,231,255,.25),inset 0 0 16px rgba(101,231,255,.12)}
+  .brand-mark:before,.brand-mark:after{content:"";position:absolute;top:50%;left:50%;width:16px;height:1px;background:var(--cyan);transform-origin:center}
+  .brand-mark:before{transform:translate(-50%,-50%) rotate(35deg)}
+  .brand-mark:after{transform:translate(-50%,-50%) rotate(-35deg);background:var(--warm)}
+  .brand h1{font-size:13px;letter-spacing:.13em;text-transform:uppercase;margin:0}
+  .brand p{color:var(--muted);font-size:10px;margin:2px 0 0;letter-spacing:.03em}
+  .modebar{display:flex;gap:6px;background:#0b172a;border:1px solid var(--line-bright);border-radius:10px;padding:4px}
+  .modebar button{background:transparent;border:none;color:var(--muted);padding:6px 12px;border-radius:7px;font-size:11px;letter-spacing:.04em;text-transform:uppercase;cursor:pointer}
+  .modebar button.active{background:rgba(101,231,255,.14);color:var(--cyan)}
+  .top-actions{display:flex;align-items:center;gap:8px}
+  .btn{background:#0b172a;border:1px solid var(--line-bright);border-radius:8px;padding:7px 11px;cursor:pointer;font-size:11px}
+  .btn:hover{border-color:var(--cyan)}
+  .btn.primary{background:rgba(101,231,255,.14);border-color:rgba(101,231,255,.4);color:var(--cyan)}
+  #viewport{position:relative;overflow:hidden}
+  #viewport canvas{display:block}
+  .hud{position:absolute;left:14px;bottom:14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:11px;color:var(--muted);backdrop-filter:blur(10px);line-height:1.6}
+  .hud b{color:var(--text)}
+  .panel{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding:14px}
+  .section{margin-bottom:16px;border:1px solid var(--line);border-radius:10px;padding:10px;background:rgba(9,16,29,.5)}
+  .section h2{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:0 0 8px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;font-size:12px}
+  .row label{color:var(--muted);flex:1}
+  .row input[type=range]{flex:1.4}
+  .row input[type=number],.row select{width:78px;background:#0b172a;border:1px solid var(--line-bright);border-radius:6px;padding:4px 6px}
+  .row.toggle{cursor:pointer}
+  .objlist{display:flex;flex-direction:column;gap:4px;max-height:150px;overflow-y:auto}
+  .objitem{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border-radius:7px;border:1px solid transparent;cursor:pointer;font-size:12px}
+  .objitem:hover{background:rgba(101,231,255,.06)}
+  .objitem.selected{background:rgba(101,231,255,.12);border-color:rgba(101,231,255,.35)}
+  .objitem .del{color:var(--danger);opacity:.6;font-size:11px}
+  .objitem .del:hover{opacity:1}
+  .addrow{display:flex;gap:6px;flex-wrap:wrap}
+  .addrow button{flex:1;min-width:70px;background:#0b172a;border:1px solid var(--line-bright);border-radius:7px;padding:6px;font-size:11px;cursor:pointer}
+  .addrow button:hover{border-color:var(--cyan)}
+  .editor .row input[type=number]{width:100%}
+  .toast{position:absolute;top:12px;left:50%;transform:translateX(-50%) translateY(-8px);background:var(--panel-strong);border:1px solid var(--line-bright);padding:8px 14px;border-radius:8px;font-size:12px;opacity:0;pointer-events:none;transition:.25s}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .editor-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+  .editor-actions button{flex:1;min-width:64px;background:#0b172a;border:1px solid var(--line-bright);border-radius:7px;padding:6px 4px;font-size:10.5px;letter-spacing:.02em;cursor:pointer}
+  .editor-actions button:hover{border-color:var(--cyan)}
+  .editor-actions button.pinned{background:rgba(255,180,107,.14);border-color:rgba(255,180,107,.4);color:var(--warm)}
+  .transport{position:absolute;left:14px;right:14px;bottom:14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 14px;backdrop-filter:blur(14px);display:flex;align-items:center;gap:10px;font-size:11px;z-index:4}
+  .transport button.tbtn{background:#0b172a;border:1px solid var(--line-bright);border-radius:8px;width:30px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;color:var(--text)}
+  .transport button.tbtn:hover{border-color:var(--cyan)}
+  .transport button.tbtn.playing{background:rgba(101,231,255,.16);border-color:var(--cyan);color:var(--cyan)}
+  .transport .scrub{flex:1;display:flex;align-items:center;gap:8px}
+  .transport .scrub input[type=range]{flex:1}
+  .transport .speed{display:flex;align-items:center;gap:6px;color:var(--muted)}
+  .transport .speed input[type=range]{width:70px}
+  .transport .tlabel{color:var(--muted);font-size:10px;min-width:52px;text-align:right}
+  .hud.withTransport{bottom:64px}
+  .analysis-row{display:flex;justify-content:space-between;font-size:11.5px;padding:3px 0;color:var(--muted)}
+  .analysis-row b{color:var(--text);font-weight:600}
+  .analysis-tag{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-top:6px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div><h1>Field Lab 3D</h1><p>electrodynamics engine — base build</p></div>
+    </div>
+    <div class="modebar" id="modebar">
+      <button data-mode="E" class="active">Electric</button>
+      <button data-mode="B">Magnetic</button>
+      <button data-mode="EMW">EM Wave</button>
+    </div>
+    <div class="top-actions">
+      <button class="btn" id="exportBtn">Export JSON</button>
+      <button class="btn" id="importBtn">Import JSON</button>
+      <button class="btn primary" id="resetBtn">Reset scene</button>
+    </div>
+  </div>
+
+  <div id="viewport">
+    <div class="hud" id="hud">Drag = orbit · Scroll = zoom · Right-drag = pan · units: sim-agnostic (K=1)</div>
+    <div class="toast" id="toast"></div>
+    <div class="transport" id="transport">
+      <button class="tbtn" id="stepBackBtn" title="Step back">⏮</button>
+      <button class="tbtn" id="playBtn" title="Play / Pause">▶</button>
+      <button class="tbtn" id="stepFwdBtn" title="Step forward">⏭</button>
+      <div class="scrub"><input type="range" id="scrubBar" min="0" max="0" value="0" step="1"><span class="tlabel" id="scrubLabel">t = 0.0s</span></div>
+      <div class="speed"><label>speed</label><input type="range" id="speedSlider" min="0.1" max="4" step="0.1" value="1"><span class="tlabel" id="speedLabel">1.0×</span></div>
+      <button class="tbtn" id="resetTimeBtn" title="Reset time to 0">↺</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="section">
+      <h2>Add object</h2>
+      <div class="addrow">
+        <button data-add="charge">+ Charge</button>
+        <button data-add="dipole">+ Dipole</button>
+        <button data-add="wire">+ Wire</button>
+        <button data-add="sheet">+ Sheet</button>
+        <button data-add="sphere">+ Sphere</button>
+        <button data-add="ring">+ Ring</button><button data-add="loop">+ Current loop</button><button data-add="mdipole">+ Magnetic dipole</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Objects</h2>
+      <div class="objlist" id="objlist"></div>
+    </div>
+
+    <div class="section editor" id="editorSection">
+      <h2>Inspector</h2>
+      <div id="editor"><p style="color:var(--muted);font-size:12px">Select an object to edit its properties.</p></div>
+    </div>
+
+    <div class="section" id="fieldSection">
+      <h2>Field display</h2>
+      <div class="row toggle"><label>Field lines</label><input type="checkbox" id="showLines" checked></div>
+      <div class="row toggle"><label>Vector grid</label><input type="checkbox" id="showVectors"></div>
+      <div class="row"><label>Line density</label><input type="range" id="density" min="4" max="48" value="18"><span id="densityOut">18</span></div>
+      <div class="row toggle"><label>Force / torque arrows</label><input type="checkbox" id="showOverlays" checked></div>
+      <div class="row"><label>Vector scale</label><input type="range" id="vectorScale" min="0.2" max="2" step="0.1" value="0.8"><span id="vectorScaleOut">0.8</span></div>
+    </div>
+
+    <div class="section" id="analysisSection" style="display:none">
+      <h2>Oscillation analysis</h2>
+      <div id="analysisBody"></div>
+    </div>
+
+    <div class="section" id="emwSection" style="display:none">
+      <h2>EM Wave — radiation from charges</h2>
+      <div class="row toggle"><label>Show radiation wavefronts</label><input type="checkbox" id="showRadiation" checked></div>
+      <div id="radiationReadout" style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.55"></div>
+      <div style="font-size:10px;color:var(--muted);margin-top:8px">
+        Wave properties are calculated from the simulated charge motion and far-zone radiation fields; no independent plane-wave amplitude, wavelength or frequency is imposed.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script>
+  // Module-loading failures otherwise leave a beautiful but inert UI.
+  window.addEventListener("unhandledrejection", (event) => {
+    const toast = document.getElementById("toast");
+    if (toast && /three|module|import/i.test(String(event.reason))) {
+      toast.textContent = "3D engine failed to load — check your internet connection.";
+      toast.classList.add("show");
+    }
+  });
+</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+/* ============================================================================
+   FIELD LAB 3D — extensible electrodynamics engine
+   ----------------------------------------------------------------------------
+   Design goals (read this before extending):
+    1. PhysicsObject3D is the ONLY base class. Every source (charge, dipole,
+       sheet, sphere, ring, wire, and future conductors / magnetic materials)
+       extends it and implements sourceCharges(), sourceCurrents(), and/or the
+       optional fieldEAt() / uniformFieldAt() hooks. The World3D class
+      never needs to know the concrete type — it just asks each object for
+      the point-charges / current-segments it contributes, then applies
+      Coulomb's law / Biot–Savart law generically. THIS is the pattern to
+      preserve when adding new object types.
+   2. objectTypes{} is the single registry mapping a type key to
+      { cls, schema, build3D, label }. To add a new buildable object:
+        - write a class extending PhysicsObject3D
+        - add a schema entry (drives the auto-generated Inspector UI)
+        - add a build3D(obj) that returns a THREE.Object3D visual
+        - register it in objectTypes — nothing else in the file needs edits.
+   3. Units are "simulation units" (K = 1, KM = 1), exactly like the 2D
+      Electrostatics Lab this project extends, NOT SI units. This keeps
+      visuals clean without needing 1e-7/8.99e9 scale juggling.
+   4. Static fields (E, B) are only re-traced when the scene changes
+      (object added/moved/deleted/edited) — not every animation frame.
+      Only the EM Wave module animates continuously. This is the main
+      credit/CPU saver versus naively retracing 200 field lines at 60fps.
+   5. Extension slots left for you (documented, not yet implemented):
+        - ConductorObject3D: needs induced surface-charge relaxation
+          (image-charge method for spheres/planes is a good first step)
+        - MagneticMaterial3D: bound-current / magnetization model
+        - CurvedWire3D: currently only straight finite segments exist;
+          a polyline of StraightWire3D segments already approximates any
+          shape with no engine changes needed.
+   ============================================================================ */
+
+const K = 1;      // Coulomb constant, simulation units
+const KM = 1;     // mu0/4pi analog, simulation units
+const C_LIGHT = 4; // propagation speed used by the retarded/radiation visualization
+const SOFT = 0.12; // softening radius to avoid singularities near sources
+// NOTE: this is a quasi-static magnetostatics model in simulation units.
+// It does not yet model ferromagnetic hysteresis/B-H loops or eddy-current loss.
+// Rotational damping below is an explicit phenomenological dissipative term,
+// and is not the same physical mechanism as hysteresis loss.
+
+const $ = (id) => document.getElementById(id);
+const toastEl = $("toast");
+function toast(msg){ toastEl.textContent = msg; toastEl.classList.add("show"); clearTimeout(toast._t); toast._t = setTimeout(()=>toastEl.classList.remove("show"), 1800); }
+
+let uid = 1;
+const nextId = () => "obj" + (uid++);
+
+/* ---------------------------- domain objects ---------------------------- */
+
+class PhysicsObject3D {
+  constructor({ id, type, x=0, y=0, z=0 }) {
+    this.id = id; this.type = type;
+    this.position = new THREE.Vector3(x, y, z);
+  }
+  sourceCharges() { return []; }   // [{ position: Vector3, q, id }]
+  sourceCurrents() { return []; }  // [{ start: Vector3, end: Vector3, I, id }]
+  fieldEAt() { return null; }       // optional object-specific E contribution
+  uniformFieldAt() { return null; } // optional uniform/discontinuous E source
+}
+
+// Mixin-style helper: adds the free/pinned/thrown dynamics fields (mass,
+// fixed, velocity, and optionally rotational state) to a PhysicsObject3D
+// subclass constructor. Sheets/wires are left out — they represent
+// idealized infinite/fixed sources and never join the integrator.
+function initDynamics(obj, cfg, { rotational=false } = {}) {
+  obj.mass = cfg.mass ?? 1;
+  obj.fixed = (cfg.fixed ?? 1) >= 0.5; // fixed by default until Released/Thrown
+  obj.velocity = new THREE.Vector3(cfg.vx ?? 0, cfg.vy ?? 0, cfg.vz ?? 0);
+  obj.traceTrajectory = !!cfg.traceTrajectory;
+  obj.rotationalDamping = cfg.rotationalDamping ?? 0;
+  obj._trail = [];
+  obj._trailLastSample = -Infinity;
+  if (rotational) {
+    obj.momentOfInertia = cfg.momentOfInertia ?? 1;
+    obj.angularVelocity = new THREE.Vector3(cfg.wx ?? 0, cfg.wy ?? 0, cfg.wz ?? 0);
+  }
+  // Snapshot used by "Reset object" / "Reset time to 0" — refreshed whenever
+  // the object is (re)pinned or edited while pinned.
+  obj._snapshot = snapshotOf(obj);
+}
+function snapshotOf(obj) {
+  const s = { position: obj.position.clone(), velocity: obj.velocity ? obj.velocity.clone() : null };
+  if (["dipole","loop","mdipole","ring"].includes(obj.type) && obj.angularVelocity) { s.theta = obj.theta; s.phi = obj.phi; s.angularVelocity = obj.angularVelocity.clone(); }
+  return s;
+}
+function restoreSnapshot(obj) {
+  if (!obj._snapshot) return;
+  obj.position.copy(obj._snapshot.position);
+  if (obj.velocity) obj.velocity.set(0, 0, 0);
+  if (["dipole","loop","mdipole","ring"].includes(obj.type) && obj.angularVelocity && obj._snapshot.theta != null) {
+    obj.theta = obj._snapshot.theta; obj.phi = obj._snapshot.phi;
+    obj.angularVelocity.set(0, 0, 0);
+  }
+}
+
+class PointCharge3D extends PhysicsObject3D {
+  constructor(cfg) {
+    super({ ...cfg, type: "charge" });
+    this.q = cfg.q ?? 1;
+    initDynamics(this, cfg);
+  }
+  sourceCharges() { return [{ position: this.position, q: this.q, id: this.id }]; }
+}
+
+class DipoleObject3D extends PhysicsObject3D {
+  constructor(cfg) {
+    super({ ...cfg, type: "dipole" });
+    this.q = cfg.q ?? 1;
+    this.d = cfg.d ?? 1.2;             // separation
+    this.theta = cfg.theta ?? 0.6;     // polar angle from +z
+    this.phi = cfg.phi ?? 0.4;         // azimuth from +x
+    initDynamics(this, cfg, { rotational: true });
+  }
+  orientation() {
+    return new THREE.Vector3(
+      Math.sin(this.theta) * Math.cos(this.phi),
+      Math.sin(this.theta) * Math.sin(this.phi),
+      Math.cos(this.theta)
+    );
+  }
+  // Inverse of orientation() — used by the tumble integrator, which rotates
+  // the orientation vector directly (Rodrigues) rather than integrating
+  // theta/phi as separate ODEs, then reprojects back to spherical angles
+  // so the rest of the file (endpoints, rendering, schema) is untouched.
+  setOrientationFromVector(n) {
+    const v = n.clone().normalize();
+    this.theta = Math.acos(THREE.MathUtils.clamp(v.z, -1, 1));
+    this.phi = Math.atan2(v.y, v.x);
+  }
+  endpoints() {
+    const u = this.orientation().multiplyScalar(this.d / 2);
+    return { plus: this.position.clone().add(u), minus: this.position.clone().sub(u) };
+  }
+  sourceCharges() {
+    const ep = this.endpoints();
+    return [
+      { position: ep.plus, q: this.q, id: this.id },
+      { position: ep.minus, q: -this.q, id: this.id }
+    ];
+  }
+}
+
+function orientationVector(theta, phi) {
+  return new THREE.Vector3(
+    Math.sin(theta) * Math.cos(phi),
+    Math.sin(theta) * Math.sin(phi),
+    Math.cos(theta)
+  );
+}
+
+class InfiniteSheet3D extends PhysicsObject3D {
+  constructor(cfg) {
+    super({ ...cfg, type: "sheet" });
+    this.sigma = cfg.sigma ?? 1;
+    this.size = cfg.size ?? 4;
+    this.theta = cfg.theta ?? 0;
+    this.phi = cfg.phi ?? 0;
+  }
+  // Sheet angles use +Y as the polar axis so the default sheet is the XZ
+  // plane at y = 0. This matches the scene's ground/grid convention.
+  normal() {
+    return new THREE.Vector3(
+      Math.sin(this.theta) * Math.cos(this.phi),
+      Math.cos(this.theta),
+      Math.sin(this.theta) * Math.sin(this.phi)
+    ).normalize();
+  }
+  uniformFieldAt(point) {
+    const side = Math.sign(point.clone().sub(this.position).dot(this.normal()));
+    return this.normal().multiplyScalar(this.sigma * 0.5 * (side || 1));
+  }
+}
+
+class ChargedSphere3D extends PhysicsObject3D {
+  constructor(cfg) {
+    super({ ...cfg, type: "sphere" });
+    this.Q = cfg.Q ?? 1;
+    this.radius = cfg.radius ?? 1;
+    this.conducting = cfg.conducting ?? false;
+    initDynamics(this, cfg);
+  }
+  // World3D calls this generic hook; the solver does not inspect object types.
+  fieldEAt(point) {
+    const rVec = point.clone().sub(this.position);
+    const r = rVec.length();
+    if (r < 1e-8) return new THREE.Vector3();
+    if (r < this.radius && !this.conducting) {
+      return rVec.multiplyScalar(K * this.Q / Math.pow(this.radius, 3));
+    }
+    if (r < this.radius && this.conducting) return new THREE.Vector3();
+    return rVec.normalize().multiplyScalar(K * this.Q / Math.max(r, SOFT) ** 2);
+  }
+}
+
+class ChargedRing3D extends PhysicsObject3D {
+  constructor(cfg) {
+    super({ ...cfg, type: "ring" });
+    this.Q = cfg.Q ?? 1;
+    this.radius = cfg.radius ?? 1.2;
+    this.theta = cfg.theta ?? Math.PI / 2;
+    this.phi = cfg.phi ?? 0;
+    initDynamics(this, cfg);
+  }
+  normal() { return orientationVector(this.theta, this.phi); }
+  sourceCharges() {
+    const n = this.normal();
+    const ref = Math.abs(n.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
+    const u = n.clone().cross(ref).normalize();
+    const v = n.clone().cross(u).normalize();
+    const charges = [];
+    for (let i = 0; i < 40; i++) {
+      const a = (i / 40) * Math.PI * 2;
+      charges.push({
+        position: this.position.clone()
+          .addScaledVector(u, Math.cos(a) * this.radius)
+          .addScaledVector(v, Math.sin(a) * this.radius),
+        q: this.Q / 40, id: this.id
+      });
+    }
+    return charges;
+  }
+  fieldEAt(point) {
+    const n = this.normal();
+    const delta = point.clone().sub(this.position);
+    const axial = delta.dot(n);
+    const radial = delta.clone().addScaledVector(n, -axial).length();
+    if (radial > 1e-5) return null;
+    return n.multiplyScalar(K * this.Q * axial / Math.pow(axial * axial + this.radius * this.radius, 1.5));
+  }
+}
+
+class StraightWire3D extends PhysicsObject3D {
+  // A finite straight current-carrying segment from `start` to `end`.
+  // Curved / bent wires: chain several of these (see header notes).
+  constructor(cfg) {
+    super({ ...cfg, type: "wire" });
+    this.start = new THREE.Vector3(cfg.sx ?? -2, cfg.sy ?? 0, cfg.sz ?? 0);
+    this.end = new THREE.Vector3(cfg.ex ?? 2, cfg.ey ?? 0, cfg.ez ?? 0);
+    this.I = cfg.I ?? 2; // current, +ve = start->end
+    this.mass = cfg.mass ?? 1;
+    this.fixed = cfg.fixed ?? true;
+    this.velocity = new THREE.Vector3(cfg.vx ?? 0, cfg.vy ?? 0, cfg.vz ?? 0);
+    this.position = this.start.clone().lerp(this.end, 0.5);
+  }
+  sourceCurrents() { return [{ start: this.start, end: this.end, I: this.I, id: this.id }]; }
+}
+
+
+class CurrentLoop3D extends PhysicsObject3D {
+  constructor(cfg) {
+    super({ ...cfg, type: "loop" });
+    this.I = cfg.I ?? 2;
+    this.radius = cfg.radius ?? 1.2;
+    this.theta = cfg.theta ?? Math.PI/2;
+    this.phi = cfg.phi ?? 0;
+    initDynamics(this, cfg, { rotational:true });
+  }
+  normal(){ return orientationVector(this.theta, this.phi); }
+  sourceCurrents(){
+    const n=this.normal();
+    const ref=Math.abs(n.y)<0.9?new THREE.Vector3(0,1,0):new THREE.Vector3(1,0,0);
+    const u=n.clone().cross(ref).normalize(), v=n.clone().cross(u).normalize();
+    const out=[]; const N=64;
+    for(let i=0;i<N;i++){
+      const a=2*Math.PI*i/N, b=2*Math.PI*(i+1)/N;
+      const p=this.position.clone().addScaledVector(u,Math.cos(a)*this.radius).addScaledVector(v,Math.sin(a)*this.radius);
+      const q=this.position.clone().addScaledVector(u,Math.cos(b)*this.radius).addScaledVector(v,Math.sin(b)*this.radius);
+      out.push({start:p,end:q,I:this.I,id:this.id});
+    }
+    return out;
+  }
+  magneticMoment(){ return this.normal().multiplyScalar(this.I*Math.PI*this.radius*this.radius); }
+}
+
+class MagneticDipole3D extends PhysicsObject3D {
+  constructor(cfg){
+    super({ ...cfg, type:"mdipole" });
+    this.m = cfg.m ?? 2;
+    this.theta = cfg.theta ?? Math.PI/2;
+    this.phi = cfg.phi ?? 0;
+    initDynamics(this,cfg,{ rotational:true });
+  }
+  normal(){ return orientationVector(this.theta,this.phi); }
+  setOrientationFromVector(n){
+    const v=n.clone().normalize();
+    this.theta=Math.acos(THREE.MathUtils.clamp(v.z,-1,1));
+    this.phi=Math.atan2(v.y,v.x);
+  }
+  moment(){ return this.normal().multiplyScalar(this.m); }
+  fieldBAt(point){
+    const r=point.clone().sub(this.position), d=Math.max(r.length(),SOFT);
+    if(d<1e-8) return new THREE.Vector3();
+    const rhat=r.clone().multiplyScalar(1/d), m=this.moment();
+    const pref=KM/(d*d*d);
+    return rhat.clone().multiplyScalar(3*m.dot(rhat)).sub(m).multiplyScalar(pref);
+  }
+}
+
+/* Extension stubs — left intentionally unimplemented, wired into the
+   registry pattern so a future pass can flesh them out without touching
+   World3D or the renderer. */
+class ConductorObject3D extends PhysicsObject3D {
+  constructor(cfg){ super({ ...cfg, type:"conductor" }); this.radius = cfg.radius ?? 1; /* TODO induced charge */ }
+  sourceCharges(){ return []; }
+}
+class MagneticMaterial3D extends PhysicsObject3D {
+  constructor(cfg){ super({ ...cfg, type:"magneticMaterial" }); this.radius = cfg.radius ?? 1; /* TODO magnetization */ }
+  // TODO Replace this placeholder with a bound-current / magnetization model.
+  // The solver can consume that model through sourceCharges/sourceCurrents().
+  sourceCurrents(){ return []; }
+}
+
+const objectSchemas = {
+  charge: { label: "Point charge", fields: [
+    { key:"q", label:"q", min:-4, max:4, step:0.1 },
+    { key:"x", label:"x", min:-6, max:6, step:0.1, target:"position" },
+    { key:"y", label:"y", min:-6, max:6, step:0.1, target:"position" },
+    { key:"z", label:"z", min:-6, max:6, step:0.1, target:"position" },
+    { key:"mass", label:"mass", min:0.1, max:6, step:0.1 },
+    { key:"fixed", label:"pinned (0/1)", min:0, max:1, step:1 },
+    { key:"vx", label:"vx", min:-4, max:4, step:0.1, target:"velocity" },
+    { key:"vy", label:"vy", min:-4, max:4, step:0.1, target:"velocity" },
+    { key:"vz", label:"vz", min:-4, max:4, step:0.1, target:"velocity" },
+  ]},
+  dipole: { label: "Dipole", fields: [
+    { key:"q", label:"q", min:0.1, max:4, step:0.1 },
+    { key:"d", label:"separation", min:0.2, max:4, step:0.1 },
+    { key:"theta", label:"θ (polar)", min:0, max:Math.PI, step:0.02 },
+    { key:"phi", label:"φ (azimuth)", min:-Math.PI, max:Math.PI, step:0.02 },
+    { key:"x", label:"x", min:-6, max:6, step:0.1, target:"position" },
+    { key:"y", label:"y", min:-6, max:6, step:0.1, target:"position" },
+    { key:"z", label:"z", min:-6, max:6, step:0.1, target:"position" },
+    { key:"mass", label:"mass", min:0.1, max:6, step:0.1 },
+    { key:"momentOfInertia", label:"moment of inertia I", min:0.05, max:6, step:0.05 },
+    { key:"rotationalDamping", label:"rotational damping", min:0, max:2, step:0.01 },
+    { key:"fixed", label:"pinned (0/1)", min:0, max:1, step:1 },
+    { key:"vx", label:"vx", min:-4, max:4, step:0.1, target:"velocity" },
+    { key:"vy", label:"vy", min:-4, max:4, step:0.1, target:"velocity" },
+    { key:"vz", label:"vz", min:-4, max:4, step:0.1, target:"velocity" },
+    { key:"wx", label:"ωx", min:-4, max:4, step:0.1, target:"angularVelocity" },
+    { key:"wy", label:"ωy", min:-4, max:4, step:0.1, target:"angularVelocity" },
+    { key:"wz", label:"ωz", min:-4, max:4, step:0.1, target:"angularVelocity" },
+  ]},
+  wire: { label: "Current wire", fields: [
+    { key:"I", label:"current I", min:-6, max:6, step:0.1 },
+    { key:"mass", label:"mass", min:0.1, max:6, step:0.1 },
+    { key:"fixed", label:"pinned (0/1)", min:0, max:1, step:1 },
+    { key:"vx", label:"vx", min:-4, max:4, step:0.1, target:"velocity" },
+    { key:"vy", label:"vy", min:-4, max:4, step:0.1, target:"velocity" },
+    { key:"vz", label:"vz", min:-4, max:4, step:0.1, target:"velocity" },
+    { key:"sx", label:"start x", min:-6, max:6, step:0.1, target:"start" },
+    { key:"sy", label:"start y", min:-6, max:6, step:0.1, target:"start" },
+    { key:"sz", label:"start z", min:-6, max:6, step:0.1, target:"start" },
+    { key:"ex", label:"end x", min:-6, max:6, step:0.1, target:"end" },
+    { key:"ey", label:"end y", min:-6, max:6, step:0.1, target:"end" },
+    { key:"ez", label:"end z", min:-6, max:6, step:0.1, target:"end" },
+  ]},
+  sheet: { label: "Infinite sheet", fields: [
+    { key:"sigma", label:"surface charge σ", min:-4, max:4, step:0.1 },
+    { key:"size", label:"visual size", min:1, max:8, step:0.1 },
+    { key:"theta", label:"θ (normal from +y)", min:0, max:Math.PI, step:0.02 },
+    { key:"phi", label:"φ (normal azimuth)", min:-Math.PI, max:Math.PI, step:0.02 },
+    { key:"x", label:"x", min:-6, max:6, step:0.1, target:"position" },
+    { key:"y", label:"y", min:-6, max:6, step:0.1, target:"position" },
+    { key:"z", label:"z", min:-6, max:6, step:0.1, target:"position" },
+  ]},
+  sphere: { label: "Charged sphere", fields: [
+    { key:"Q", label:"total charge Q", min:-6, max:6, step:0.1 },
+    { key:"radius", label:"radius R", min:0.2, max:3, step:0.1 },
+    { key:"conducting", label:"conducting (0/1)", min:0, max:1, step:1 },
+    { key:"x", label:"x", min:-6, max:6, step:0.1, target:"position" },
+    { key:"y", label:"y", min:-6, max:6, step:0.1, target:"position" },
+    { key:"z", label:"z", min:-6, max:6, step:0.1, target:"position" },
+    { key:"mass", label:"mass", min:0.1, max:6, step:0.1 },
+    { key:"fixed", label:"pinned (0/1)", min:0, max:1, step:1 },
+    { key:"vx", label:"vx", min:-4, max:4, step:0.1, target:"velocity" },
+    { key:"vy", label:"vy", min:-4, max:4, step:0.1, target:"velocity" },
+    { key:"vz", label:"vz", min:-4, max:4, step:0.1, target:"velocity" },
+  ]},
+  loop: { label: "Current loop", fields: [
+    { key:"I", label:"current I", min:-6, max:6, step:0.1 },
+    { key:"radius", label:"loop radius a", min:0.2, max:3, step:0.1 },
+    { key:"theta", label:"θ (axis)", min:0, max:Math.PI, step:0.02 },
+    { key:"phi", label:"φ (axis azimuth)", min:-Math.PI, max:Math.PI, step:0.02 },
+    { key:"x", label:"x", min:-6, max:6, step:0.1, target:"position" },
+    { key:"y", label:"y", min:-6, max:6, step:0.1, target:"position" },
+    { key:"z", label:"z", min:-6, max:6, step:0.1, target:"position" },
+    { key:"mass", label:"mass", min:0.1, max:6, step:0.1 },
+    { key:"momentOfInertia", label:"moment of inertia I", min:0.05, max:6, step:0.05 },
+    { key:"rotationalDamping", label:"rotational damping", min:0, max:2, step:0.01 },
+    { key:"fixed", label:"pinned (0/1)", min:0, max:1, step:1 },
+    { key:"vx", label:"vx", min:-4, max:4, step:0.1, target:"velocity" },
+    { key:"vy", label:"vy", min:-4, max:4, step:0.1, target:"velocity" },
+    { key:"vz", label:"vz", min:-4, max:4, step:0.1, target:"velocity" },
+    { key:"wx", label:"ωx", min:-4, max:4, step:0.1, target:"angularVelocity" },
+    { key:"wy", label:"ωy", min:-4, max:4, step:0.1, target:"angularVelocity" },
+    { key:"wz", label:"ωz", min:-4, max:4, step:0.1, target:"angularVelocity" },
+  ]},
+  mdipole: { label: "Magnetic dipole", fields: [
+    { key:"m", label:"magnetic moment m", min:-6, max:6, step:0.1 },
+    { key:"theta", label:"θ (moment)", min:0, max:Math.PI, step:0.02 },
+    { key:"phi", label:"φ (moment azimuth)", min:-Math.PI, max:Math.PI, step:0.02 },
+    { key:"x", label:"x", min:-6, max:6, step:0.1, target:"position" },
+    { key:"y", label:"y", min:-6, max:6, step:0.1, target:"position" },
+    { key:"z", label:"z", min:-6, max:6, step:0.1, target:"position" },
+    { key:"mass", label:"mass", min:0.1, max:6, step:0.1 },
+    { key:"momentOfInertia", label:"moment of inertia I", min:0.05, max:6, step:0.05 },
+    { key:"rotationalDamping", label:"rotational damping", min:0, max:2, step:0.01 },
+    { key:"fixed", label:"pinned (0/1)", min:0, max:1, step:1 },
+    { key:"vx", label:"vx", min:-4, max:4, step:0.1, target:"velocity" },
+    { key:"vy", label:"vy", min:-4, max:4, step:0.1, target:"velocity" },
+    { key:"vz", label:"vz", min:-4, max:4, step:0.1, target:"velocity" },
+    { key:"wx", label:"ωx", min:-4, max:4, step:0.1, target:"angularVelocity" },
+    { key:"wy", label:"ωy", min:-4, max:4, step:0.1, target:"angularVelocity" },
+    { key:"wz", label:"ωz", min:-4, max:4, step:0.1, target:"angularVelocity" },
+  ]},
+  ring: { label: "Charged ring", fields: [
+    { key:"Q", label:"total charge Q", min:-6, max:6, step:0.1 },
+    { key:"radius", label:"ring radius a", min:0.2, max:3, step:0.1 },
+    { key:"theta", label:"θ (axis)", min:0, max:Math.PI, step:0.02 },
+    { key:"phi", label:"φ (axis azimuth)", min:-Math.PI, max:Math.PI, step:0.02 },
+    { key:"x", label:"x", min:-6, max:6, step:0.1, target:"position" },
+    { key:"y", label:"y", min:-6, max:6, step:0.1, target:"position" },
+    { key:"z", label:"z", min:-6, max:6, step:0.1, target:"position" },
+    { key:"mass", label:"mass", min:0.1, max:6, step:0.1 },
+    { key:"fixed", label:"pinned (0/1)", min:0, max:1, step:1 },
+    { key:"vx", label:"vx", min:-4, max:4, step:0.1, target:"velocity" },
+    { key:"vy", label:"vy", min:-4, max:4, step:0.1, target:"velocity" },
+    { key:"vz", label:"vz", min:-4, max:4, step:0.1, target:"velocity" },
+  ]},
+};
+
+const objectTypes = {
+  charge: { cls: PointCharge3D, schema: objectSchemas.charge, build3D: buildChargeMesh },
+  dipole: { cls: DipoleObject3D, schema: objectSchemas.dipole, build3D: buildDipoleMesh },
+  wire: { cls: StraightWire3D, schema: objectSchemas.wire, build3D: buildWireMesh },
+  sheet: { cls: InfiniteSheet3D, schema: objectSchemas.sheet, build3D: buildSheetMesh },
+  sphere: { cls: ChargedSphere3D, schema: objectSchemas.sphere, build3D: buildSphereMesh },
+  ring: { cls: ChargedRing3D, schema: objectSchemas.ring, build3D: buildRingMesh },
+  loop: { cls: CurrentLoop3D, schema: objectSchemas.loop, build3D: buildCurrentLoopMesh },
+  mdipole: { cls: MagneticDipole3D, schema: objectSchemas.mdipole, build3D: buildMagneticDipoleMesh },
+};
+
+/* ------------------------------- world ---------------------------------- */
+
+class World3D {
+  constructor() { this.objects = []; this._currentCache = new Map(); this._cacheEpoch = 0; }
+  invalidateFieldCaches(){ this._cacheEpoch++; this._currentCache.clear(); }
+
+  add(obj) { this.objects.push(obj); this.invalidateFieldCaches(); return obj; }
+  remove(id) { this.objects = this.objects.filter(o => o.id !== id); this.invalidateFieldCaches(); }
+
+  allCharges(excludeId=null) {
+    return this.objects.filter(o => o.id !== excludeId).flatMap(o => o.sourceCharges());
+  }
+  allCurrents(excludeId=null) {
+    const key = `${this._cacheEpoch}|${excludeId ?? ""}`;
+    if (!this._currentCache.has(key)) this._currentCache.set(key, this.objects.filter(o => o.id !== excludeId).flatMap(o => o.sourceCurrents()));
+    return this._currentCache.get(key);
+  }
+
+  fieldE(point, excludeId=null) {
+    const E = new THREE.Vector3();
+    for (const obj of this.objects) {
+      if (obj.id === excludeId) continue;
+      const special = obj.fieldEAt(point, excludeId);
+      if (special) {
+        E.add(special);
+      } else {
+        for (const c of obj.sourceCharges()) {
+          const r = point.clone().sub(c.position);
+          const dist = Math.max(r.length(), SOFT);
+          const mag = K * c.q / (dist * dist);
+          E.add(r.normalize().multiplyScalar(mag));
+        }
+      }
+      const uniform = obj.uniformFieldAt(point, excludeId);
+      if (uniform) E.add(uniform);
+    }
+    return E;
+  }
+
+  // Biot–Savart–Laplace for a finite straight segment, closed form.
+  fieldB(point, excludeId=null) {
+    const B = new THREE.Vector3();
+    for (const obj of this.objects) {
+      if (obj.id===excludeId) continue;
+      if (obj.fieldBAt) B.add(obj.fieldBAt(point));
+      // Non-relativistic field of a moving point charge (quasi-static approximation).
+      if (obj.type === "charge" && obj.velocity && obj.velocity.lengthSq() > 1e-12) {
+        const r=point.clone().sub(obj.position), d=Math.max(r.length(),SOFT);
+        B.add(obj.velocity.clone().cross(r).multiplyScalar(KM*obj.q/(d*d*d)));
+      }
+    }
+    for (const w of this.allCurrents(excludeId)) {
+      const L = w.end.clone().sub(w.start);
+      const len = L.length();
+      if (len < 1e-6) continue;
+      const ihat = L.clone().normalize();
+      const a = point.clone().sub(w.start);
+      const proj = a.dot(ihat);
+      const foot = w.start.clone().add(ihat.clone().multiplyScalar(proj));
+      const perp = point.clone().sub(foot);
+      const actualR = perp.length();
+      const r = Math.max(actualR, SOFT);
+      // At the wire axis the azimuthal direction is undefined. Pick a stable
+      // perpendicular so a vector-grid sample never becomes NaN.
+      const rhat = actualR > 1e-8
+        ? perp.clone().multiplyScalar(1 / actualR)
+        : (Math.abs(ihat.y) < 0.9
+          ? ihat.clone().cross(new THREE.Vector3(0, 1, 0)).normalize()
+          : ihat.clone().cross(new THREE.Vector3(1, 0, 0)).normalize());
+      const s1 = -proj;            // signed distance foot->start along ihat
+      const s2 = len - proj;       // signed distance foot->end along ihat
+      const sinT1 = s1 / Math.sqrt(s1*s1 + r*r);
+      const sinT2 = s2 / Math.sqrt(s2*s2 + r*r);
+      const magB = KM * w.I / r * (sinT2 - sinT1);
+      const dir = ihat.clone().cross(rhat); // azimuthal direction
+      B.add(dir.multiplyScalar(magB));
+    }
+    return B;
+  }
+}
+
+const world = new World3D();
+
+/* ------------------------------ dynamics --------------------------------- */
+/* Free/pinned/thrown integrator. World3D stays the only place that knows how
+   to sum fields — this layer only asks it for E/B at a point and turns that
+   into forces/torques, then advances position/orientation with a two-pass
+   (predict → recompute accel → correct velocity) velocity-Verlet step. */
+
+const movers = () => world.objects.filter(o => o.velocity && !o.fixed);
+const allMovable = () => world.objects.filter(o => !!o.velocity);
+
+function magneticForceOnWire(obj){
+  const F=new THREE.Vector3();
+  const L=obj.end.clone().sub(obj.start), N=24;
+  for(let i=0;i<N;i++){
+    const a=(i+0.5)/N;
+    const p=obj.start.clone().lerp(obj.end,a);
+    const dl=L.clone().multiplyScalar(1/N);
+    const B=world.fieldB(p,obj.id);
+    F.add(dl.cross(B).multiplyScalar(obj.I));
+  }
+  return F;
+}
+function netForceOn(obj) {
+  const F = new THREE.Vector3();
+  if (obj.type === "dipole") {
+    const ep = obj.endpoints();
+    F.add(world.fieldE(ep.plus, obj.id).multiplyScalar(obj.q));
+    F.addScaledVector(world.fieldE(ep.minus, obj.id), -obj.q);
+    // Magnetic force on the two moving charges of the electric dipole.
+    const v=obj.velocity||new THREE.Vector3();
+    if(v.lengthSq()>1e-10){
+      F.add(v.clone().cross(world.fieldB(ep.plus,obj.id)).multiplyScalar(obj.q));
+      F.add(v.clone().cross(world.fieldB(ep.minus,obj.id)).multiplyScalar(-obj.q));
+    }
+  } else if (obj.type === "wire") {
+    F.add(magneticForceOnWire(obj));
+  } else if (obj.type === "loop") {
+    F.add(magneticForceOnWireSegments(obj));
+  } else if (obj.type === "mdipole") {
+    F.add(magneticDipoleForce(obj));
+  } else {
+    const q = obj.q ?? obj.Q ?? 0;
+    F.add(world.fieldE(obj.position, obj.id).multiplyScalar(q));
+    if (obj.velocity && obj.velocity.lengthSq() > 1e-10) {
+      const B = world.fieldB(obj.position, obj.id);
+      F.add(obj.velocity.clone().cross(B).multiplyScalar(q));
+    }
+  }
+  return F;
+}
+function magneticForceOnWireSegments(obj){
+  const F=new THREE.Vector3();
+  for(const w of obj.sourceCurrents()){
+    const p=w.start.clone().lerp(w.end,0.5);
+    const B=world.fieldB(p,obj.id);
+    F.add(w.end.clone().sub(w.start).cross(B).multiplyScalar(w.I));
+  }
+  return F;
+}
+function magneticDipoleForce(obj){
+  const h=0.08, m=obj.moment();
+  const x=obj.position;
+  const dBx=world.fieldB(x.clone().add(new THREE.Vector3(h,0,0)),obj.id).sub(world.fieldB(x.clone().sub(new THREE.Vector3(h,0,0)),obj.id)).multiplyScalar(1/(2*h));
+  const dBy=world.fieldB(x.clone().add(new THREE.Vector3(0,h,0)),obj.id).sub(world.fieldB(x.clone().sub(new THREE.Vector3(0,h,0)),obj.id)).multiplyScalar(1/(2*h));
+  const dBz=world.fieldB(x.clone().add(new THREE.Vector3(0,0,h)),obj.id).sub(world.fieldB(x.clone().sub(new THREE.Vector3(0,0,h)),obj.id)).multiplyScalar(1/(2*h));
+  return new THREE.Vector3(m.dot(dBx),m.dot(dBy),m.dot(dBz));
+}
+function magneticTorqueOnCurrentLoop(obj){
+  const T=new THREE.Vector3();
+  const center=obj.position;
+  for(const w of obj.sourceCurrents()){
+    const dl=w.end.clone().sub(w.start);
+    const p=w.start.clone().lerp(w.end,0.5);
+    const B=world.fieldB(p,obj.id);
+    T.add(p.clone().sub(center).cross(dl.cross(B).multiplyScalar(w.I)));
+  }
+  return T;
+}
+function netTorqueOn(obj) {
+  if (obj.type === "dipole") {
+    const ep=obj.endpoints(), Fp=world.fieldE(ep.plus,obj.id).multiplyScalar(obj.q), Fm=world.fieldE(ep.minus,obj.id).multiplyScalar(-obj.q);
+    return ep.plus.clone().sub(obj.position).cross(Fp).add(ep.minus.clone().sub(obj.position).cross(Fm));
+  }
+  if(obj.type === "loop") return magneticTorqueOnCurrentLoop(obj);
+  if(obj.type === "mdipole") return obj.moment().cross(world.fieldB(obj.position,obj.id));
+  return new THREE.Vector3();
+}
+
+function stepDynamics(dt) {
+  const active = movers();
+  if (!active.length) return;
+  world.invalidateFieldCaches();
+  const a0 = new Map();
+  for (const o of active) {
+    const a=netForceOn(o).divideScalar(o.mass || 1);
+    a0.set(o.id,a);
+    o._lastAcceleration=a.clone();
+  }
+  for (const o of active) {
+    if(o.type==='wire'){ const dv=a0.get(o.id).clone().multiplyScalar(0.5*dt*dt); o.start.addScaledVector(o.velocity,dt).add(dv); o.end.addScaledVector(o.velocity,dt).add(dv); o.position.copy(o.start.clone().lerp(o.end,0.5)); }
+    else o.position.addScaledVector(o.velocity, dt).addScaledVector(a0.get(o.id), 0.5 * dt * dt);
+  }
+  world.invalidateFieldCaches();
+  const a1 = new Map();
+  for (const o of active) a1.set(o.id, netForceOn(o).divideScalar(o.mass || 1));
+  for (const o of active) o.velocity.addScaledVector(a0.get(o.id).add(a1.get(o.id)), 0.5 * dt);
+  for (const o of active) {
+    if (!o.angularVelocity || !['dipole','loop','mdipole'].includes(o.type)) continue;
+    const Irot = o.momentOfInertia || 1;
+    const damping = Math.max(0, o.rotationalDamping || 0);
+    const alpha = netTorqueOn(o).addScaledVector(o.angularVelocity, -damping).divideScalar(Irot);
+    o.angularVelocity.addScaledVector(alpha, dt);
+    const omegaMag=o.angularVelocity.length();
+    if(omegaMag>1e-8){ o.setOrientationFromVector(o.orientation().applyAxisAngle(o.angularVelocity.clone().normalize(),omegaMag*dt)); }
+  }
+  // Positions/orientations have changed; the next field query must not reuse
+  // source geometry cached before this dynamics step.
+  world.invalidateFieldCaches();
+}
+function pinObject(obj) {
+  obj.fixed = true;
+  obj.velocity.set(0, 0, 0);
+  if (obj.angularVelocity) obj.angularVelocity.set(0, 0, 0);
+  obj._snapshot = snapshotOf(obj);
+}
+function releaseObject(obj, { zeroVelocity=false } = {}) {
+  if (zeroVelocity) { obj.velocity.set(0, 0, 0); if (obj.angularVelocity) obj.angularVelocity.set(0, 0, 0); }
+  obj._snapshot = snapshotOf(obj); // this is now the "last thrown/released" state
+  obj.fixed = false;
+}
+function resetObjectToSnapshot(obj) {
+  restoreSnapshot(obj);
+}
+
+/* ------------------------------ renderer --------------------------------- */
+
+const viewport = $("viewport");
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(52, 1, 0.1, 200);
+camera.position.set(6, 4.5, 8);
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+/* --------------------------- trajectory trails --------------------------- */
+const TRAIL_LIFE = 5.0;          // seconds before old points disappear
+const TRAIL_MIN_DIST = 0.045;    // don't oversample nearly stationary objects
+const TRAIL_SAMPLE_DT = 0.035;
+const TRAIL_MAX_POINTS = 420;
+const trailGroup = new THREE.Group();
+scene?.add?.(trailGroup);
+
+const trailMaterial = new THREE.ShaderMaterial({
+  transparent: true,
+  depthWrite: false,
+  vertexColors: true,
+  uniforms: { uTime: { value: 0 } },
+  vertexShader: `attribute float aAge; varying float vAge; varying vec3 vColor; void main(){ vAge=aAge; vColor=color; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+  fragmentShader: `uniform float uTime; varying float vAge; varying vec3 vColor; void main(){ float age=max(0.0,uTime-vAge); float a=1.0-smoothstep(0.0,${TRAIL_LIFE.toFixed(1)},age); gl_FragColor=vec4(vColor,a*0.78); }`
+});
+
+function trailPosition(obj){ return obj.type === 'wire' ? obj.start.clone().lerp(obj.end,0.5) : obj.position.clone(); }
+function clearTrajectory(obj){ obj._trail=[]; obj._trailLastSample=-Infinity; if(obj._trailLine){ trailGroup.remove(obj._trailLine); obj._trailLine.geometry.dispose(); obj._trailLine=null; } }
+function resetTrajectory(obj){ clearTrajectory(obj); const p=trailPosition(obj); obj._trail.push({p,t:simTime}); obj._trailLastSample=simTime; }
+function updateTrajectory(dt){
+  // simTime is advanced only by the physics integrator. The trail is a
+  // visualization of simulation time, not a second clock.
+  trailMaterial.uniforms.uTime.value=simTime;
+  for(const obj of world.objects){
+    if(!obj.velocity || !obj.traceTrajectory){ continue; }
+    const moving=obj.velocity.lengthSq()>1e-8;
+    const p=trailPosition(obj);
+    if(moving && simTime-obj._trailLastSample>=TRAIL_SAMPLE_DT){
+      const last=obj._trail[obj._trail.length-1];
+      if(!last || p.distanceToSquared(last.p)>=TRAIL_MIN_DIST*TRAIL_MIN_DIST){
+        obj._trail.push({p,t:simTime}); obj._trailLastSample=simTime;
+      }
+    }
+    const cutoff=simTime-TRAIL_LIFE;
+    while(obj._trail.length && obj._trail[0].t<cutoff) obj._trail.shift();
+    if(obj._trail.length>=2){
+      let line=obj._trailLine;
+      const n=obj._trail.length;
+      if(!line){
+        line=new THREE.Line(new THREE.BufferGeometry(),trailMaterial); obj._trailLine=line; trailGroup.add(line);
+      }
+      const pos=new Float32Array(n*3), ages=new Float32Array(n), cols=new Float32Array(n*3);
+      for(let i=0;i<n;i++){ const q=obj._trail[i]; pos[i*3]=q.p.x; pos[i*3+1]=q.p.y; pos[i*3+2]=q.p.z; ages[i]=q.t; cols[i*3]=0.40; cols[i*3+1]=0.90; cols[i*3+2]=1.0; }
+      const g=line.geometry; g.setAttribute('position',new THREE.BufferAttribute(pos,3)); g.setAttribute('aAge',new THREE.BufferAttribute(ages,1)); g.setAttribute('color',new THREE.BufferAttribute(cols,3)); g.computeBoundingSphere();
+    } else if(obj._trailLine){ trailGroup.remove(obj._trailLine); obj._trailLine.geometry.dispose(); obj._trailLine=null; }
+  }
+}
+
+renderer.setPixelRatio(Math.min(1.5, window.devicePixelRatio));
+viewport.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+
+trailGroup.visible = true;
+scene.add(new THREE.AmbientLight(0xbcd6ff, 0.7));
+const key = new THREE.DirectionalLight(0xffffff, 0.6); key.position.set(5,8,4); scene.add(key);
+
+const grid = new THREE.GridHelper(16, 16, 0x2a4468, 0x152238);
+grid.material.opacity = 0.35; grid.material.transparent = true;
+scene.add(grid);
+const axes = new THREE.AxesHelper(3.2);
+scene.add(axes);
+
+function resize() {
+  const r = viewport.getBoundingClientRect();
+  camera.aspect = r.width / r.height; camera.updateProjectionMatrix();
+  renderer.setSize(r.width, r.height);
+}
+window.addEventListener("resize", resize);
+
+/* object visuals */
+const objectGroup = new THREE.Group(); scene.add(objectGroup);
+const fieldGroup = new THREE.Group(); scene.add(fieldGroup);
+const overlayGroup = new THREE.Group(); scene.add(overlayGroup);
+const emwGroup = new THREE.Group(); scene.add(emwGroup);
+const radiationGroup = new THREE.Group(); scene.add(radiationGroup);
+
+function chargeColor(q){ return q >= 0 ? 0xff6d82 : 0x7c9cff; }
+
+function buildChargeMesh(obj) {
+  const g = new THREE.Group();
+  const geo = new THREE.SphereGeometry(0.22 + Math.min(0.18, Math.abs(obj.q)*0.05), 24, 24);
+  const mat = new THREE.MeshStandardMaterial({ color: chargeColor(obj.q), emissive: chargeColor(obj.q), emissiveIntensity: 0.35 });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.copy(obj.position);
+  g.add(mesh);
+  return g;
+}
+
+function buildDipoleMesh(obj) {
+  const g = new THREE.Group();
+  const ep = obj.endpoints();
+  g.add(sphereAt(ep.plus, 0.18, chargeColor(1)));
+  g.add(sphereAt(ep.minus, 0.18, chargeColor(-1)));
+  const geo = new THREE.BufferGeometry().setFromPoints([ep.minus, ep.plus]);
+  const mat = new THREE.LineBasicMaterial({ color: 0x8fa7c4 });
+  g.add(new THREE.Line(geo, mat));
+  return g;
+}
+function sphereAt(pos, r, color) {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(r,20,20), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity:0.35 }));
+  m.position.copy(pos); return m;
+}
+
+function buildCurrentLoopMesh(obj){
+  const g=new THREE.Group(), n=obj.normal(), ref=Math.abs(n.y)<0.9?new THREE.Vector3(0,1,0):new THREE.Vector3(1,0,0), u=n.clone().cross(ref).normalize(), v=n.clone().cross(u).normalize();
+  const pts=[]; for(let i=0;i<=64;i++){const a=2*Math.PI*i/64; pts.push(obj.position.clone().addScaledVector(u,Math.cos(a)*obj.radius).addScaledVector(v,Math.sin(a)*obj.radius));}
+  g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0xffb46b})));
+  g.add(new THREE.ArrowHelper(n.clone().multiplyScalar(Math.sign(obj.I)||1),obj.position,0.7,0xffe0b0,0.18,0.11)); return g;
+}
+function buildMagneticDipoleMesh(obj){
+  const g=new THREE.Group(), n=obj.normal();
+  g.add(new THREE.ArrowHelper(n.clone().multiplyScalar(Math.sign(obj.m)||1),obj.position,0.9,0x70e0b0,0.22,0.13));
+  return g;
+}
+function buildWireMesh(obj) {
+  const g = new THREE.Group();
+  const dir = obj.end.clone().sub(obj.start);
+  const len = dir.length();
+  const geo = new THREE.CylinderGeometry(0.06, 0.06, len, 12);
+  const mat = new THREE.MeshStandardMaterial({ color: 0xffb46b, emissive: 0xffb46b, emissiveIntensity: 0.25 });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.copy(obj.start.clone().lerp(obj.end, 0.5));
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir.clone().normalize());
+  g.add(mesh);
+  // current direction arrow
+  const arrow = new THREE.ArrowHelper(dir.clone().normalize(), obj.start, len, 0xffe0b0, 0.25, 0.14);
+  g.add(arrow);
+  return g;
+}
+
+function orientedGroup(obj) {
+  const g = new THREE.Group();
+  g.position.copy(obj.position);
+  const n = obj.normal();
+  g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);
+  return g;
+}
+
+function buildSheetMesh(obj) {
+  // PlaneGeometry is defined in the local XY plane, so its geometric normal
+  // is +Z. The sheet orientation is represented by obj.normal(), not +Y.
+  // Rotate the visual plane's +Z normal onto the physical sheet normal so
+  // the sheet surface is perpendicular to the electric-field lines.
+  const g = new THREE.Group();
+  g.position.copy(obj.position);
+
+  const n = obj.normal();
+  g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), n);
+
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0x65e7ff, emissive: 0x65e7ff, emissiveIntensity: 0.18,
+    transparent: true, opacity: 0.22, side: THREE.DoubleSide
+  });
+
+  g.add(new THREE.Mesh(new THREE.PlaneGeometry(obj.size, obj.size), mat));
+
+  // Normal arrow: local +Z, so it remains aligned with the sheet normal.
+  g.add(new THREE.ArrowHelper(
+    new THREE.Vector3(0, 0, 1),
+    new THREE.Vector3(),
+    1, 0xffb46b, 0.18, 0.1
+  ));
+
+  return g;
+}
+
+function buildSphereMesh(obj) {
+  const g = new THREE.Group();
+  g.position.copy(obj.position);
+  const color = chargeColor(obj.Q);
+  const mat = new THREE.MeshStandardMaterial({
+    color, emissive: color, emissiveIntensity: 0.3,
+    transparent: true, opacity: obj.conducting ? 0.9 : 0.5,
+    roughness: 0.35, metalness: obj.conducting ? 0.35 : 0.05
+  });
+  g.add(new THREE.Mesh(new THREE.SphereGeometry(obj.radius, 28, 18), mat));
+  const rim = new THREE.Mesh(
+    new THREE.SphereGeometry(obj.radius * 1.015, 28, 18),
+    new THREE.MeshBasicMaterial({ color, wireframe: true, transparent: true, opacity: 0.35 })
+  );
+  g.add(rim);
+  return g;
+}
+
+function buildRingMesh(obj) {
+  const g = orientedGroup(obj);
+  const color = chargeColor(obj.Q);
+  g.add(new THREE.Mesh(
+    new THREE.TorusGeometry(obj.radius, 0.055, 10, 64),
+    new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.4 })
+  ));
+  g.add(new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(), 0.9, 0xffb46b, 0.16, 0.1));
+  return g;
+}
+
+function rebuildObjectMeshes() {
+  objectGroup.clear();
+  for (const obj of world.objects) {
+    const def = objectTypes[obj.type];
+    if (def) objectGroup.add(def.build3D(obj));
+  }
+}
+
+/* ---------------------------- field line tracing -------------------------- */
+
+function traceLine(start, fieldFn, opts={}) {
+  const stepSize = opts.stepSize ?? 0.16;
+  const maxSteps = opts.maxSteps ?? 260;
+  const bounds = opts.bounds ?? 9;
+  const pts = [start.clone()];
+  let p = start.clone();
+  for (let i=0;i<maxSteps;i++){
+    const dir = fieldFn(p);
+    const m = dir.length();
+    if (!isFinite(m) || m < 1e-8) break;
+    dir.normalize();
+    const next = p.clone().addScaledVector(dir, stepSize);
+    if (opts.stopAt) {
+      const hit = opts.stopAt(p, next);
+      if (hit) {
+        pts.push(hit.clone());
+        break;
+      }
+    }
+    p = next;
+    pts.push(p.clone());
+    if (p.length() > bounds) break;
+  }
+  return pts;
+}
+
+function fibonacciSphere(n, radius) {
+  const pts = [];
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  for (let i=0;i<n;i++){
+    const y = 1 - (i/(n-1))*2;
+    const r = Math.sqrt(1-y*y);
+    const t = golden * i;
+    pts.push(new THREE.Vector3(Math.cos(t)*r, y, Math.sin(t)*r).multiplyScalar(radius));
+  }
+  return pts;
+}
+
+function lineMesh(points, color, opacity=0.75) {
+  const geo = new THREE.BufferGeometry().setFromPoints(points);
+  const mat = new THREE.LineBasicMaterial({ color, transparent:true, opacity });
+  return new THREE.Line(geo, mat);
+}
+
+function addFieldLine(group, points, color, opacity=0.75) {
+  if (points.length < 3) return;
+  group.add(lineMesh(points, color, opacity));
+
+  // A line alone does not communicate which way E/B points. Add a few
+  // lightweight arrows at evenly spaced segments, preserving the trace
+  // direction (which is the local field direction).
+  const arrowCount = Math.min(3, Math.max(1, Math.floor((points.length - 1) / 35)));
+  for (let i = 1; i <= arrowCount; i++) {
+    const index = Math.max(1, Math.min(
+      points.length - 1,
+      Math.floor((i / (arrowCount + 1)) * (points.length - 1))
+    ));
+    const from = points[index - 1];
+    const to = points[index];
+    const delta = to.clone().sub(from);
+    const length = delta.length();
+    if (length < 1e-6) continue;
+    const direction = delta.normalize();
+    const arrowLength = Math.min(0.28, Math.max(0.12, length * 2.2));
+    group.add(new THREE.ArrowHelper(
+      direction,
+      points[index],
+      arrowLength,
+      color,
+      arrowLength * 0.34,
+      arrowLength * 0.22
+    ));
+  }
+}
+
+function sheetBasis(normal) {
+  // Build two stable tangent vectors for laying out seeds on the sheet.
+  const ref = Math.abs(normal.y) < 0.9
+    ? new THREE.Vector3(0, 1, 0)
+    : new THREE.Vector3(1, 0, 0);
+  const u = new THREE.Vector3().crossVectors(normal, ref).normalize();
+  const v = new THREE.Vector3().crossVectors(normal, u).normalize();
+  return { u, v };
+}
+
+function renderSheetFieldLines(sheet, density) {
+  const group = new THREE.Group();
+  const normal = sheet.normal();
+  const { u, v } = sheetBasis(normal);
+  const count = Math.max(2, Math.ceil(Math.sqrt(Math.max(4, density))));
+  const half = sheet.size * 0.5;
+  const spacing = count === 1 ? 0 : sheet.size / (count - 1);
+  const offset = 0.08;
+  const directionSign = Math.sign(sheet.sigma);
+
+  // An ideal infinite sheet produces a uniform field normal to the sheet.
+  // Its own field lines must therefore be straight and perpendicular to the
+  // surface. Do NOT trace these with world.fieldE(): external charges would
+  // add tangential components and visually drag the sheet's field lines
+  // across the surface, producing a misleading mesh.
+  for (let side = -1; side <= 1; side += 2) {
+    for (let i = 0; i < count; i++) {
+      for (let j = 0; j < count; j++) {
+        const start = sheet.position.clone()
+          .addScaledVector(u, -half + i * spacing)
+          .addScaledVector(v, -half + j * spacing)
+          .addScaledVector(normal, side * offset);
+
+        const fieldDirection = normal.clone().multiplyScalar(directionSign * side);
+        const pts = traceLine(start, () => fieldDirection, {
+          stepSize: 0.16,
+          maxSteps: 220,
+          bounds: 8.5,
+          stopAt: sheet.sigma < 0 ? (from, to) => {
+            const d0 = from.clone().sub(sheet.position).dot(normal) * side;
+            const d1 = to.clone().sub(sheet.position).dot(normal) * side;
+            if (d0 > 0 && d1 <= 0) {
+              const t = d0 / (d0 - d1);
+              return from.clone().lerp(to, t);
+            }
+            return null;
+          } : null
+        });
+        addFieldLine(group, pts, 0x65e7ff, 0.55);
+      }
+    }
+  }
+  return group;
+}
+
+// Prevent field lines belonging to localized charges/spheres from visually
+// crossing an oppositely charged ideal sheet. Such a sheet is a legitimate
+// termination surface for those field lines; stopping at it also prevents
+// the renderer from drawing lines across or along the sheet mesh.
+function stopAtOppositeChargedSheet(sourceCharge) {
+  const sheets = world.objects.filter(o => o.type === "sheet" && Math.abs(o.sigma) > 1e-8);
+  if (!sheets.length) return null;
+  return (from, to) => {
+    for (const sheet of sheets) {
+      if (sourceCharge * sheet.sigma >= 0) continue;
+      const n = sheet.normal();
+      const d0 = from.clone().sub(sheet.position).dot(n);
+      const d1 = to.clone().sub(sheet.position).dot(n);
+      if (d0 === 0 || d0 * d1 <= 0) {
+        const denom = d0 - d1;
+        if (Math.abs(denom) < 1e-12) continue;
+        const t = d0 / denom;
+        return from.clone().lerp(to, THREE.MathUtils.clamp(t, 0, 1));
+      }
+    }
+    return null;
+  };
+}
+
+function renderEFieldLines(density) {
+  const group = new THREE.Group();
+  const pointSources = world.objects.flatMap(o => o.sourceCharges())
+    .filter(c => Math.abs(c.q) > 1e-8);
+  const seedsPer = Math.max(4, Math.round(density));
+  for (const c of pointSources) {
+    const seeds = fibonacciSphere(seedsPer, 0.28 + Math.abs(c.q)*0.05);
+    for (const s of seeds) {
+      const start = c.position.clone().add(s);
+      const sign = c.q > 0 ? 1 : -1;
+      const pts = traceLine(start, (p) => world.fieldE(p).multiplyScalar(sign), {
+        stepSize:0.16,
+        maxSteps:220,
+        bounds:8.5,
+        stopAt: stopAtOppositeChargedSheet(c.q)
+      });
+      // Negative-source traces are walked backwards so they can be seeded
+      // locally; reverse the geometry back to the physical E direction
+      // (toward the negative source) before adding direction arrows.
+      if (c.q < 0) pts.reverse();
+      addFieldLine(group, pts, 0x65e7ff, 0.55);
+    }
+  }
+
+  // Spheres use an analytic field hook rather than point charges, so they
+  // need their own surface seeds. Negative spheres trace inward (toward the
+  // charge), while positive spheres trace outward.
+  for (const sphere of world.objects.filter(o => o.type === "sphere" && Math.abs(o.Q) > 1e-8)) {
+    const offset = 0.06;
+    for (const s of fibonacciSphere(seedsPer * 2, sphere.radius + offset)) {
+      const start = sphere.position.clone().add(s);
+      const pts = traceLine(start, (p) => world.fieldE(p), {
+        stepSize:0.14,
+        maxSteps:240,
+        bounds:8.5,
+        stopAt: stopAtOppositeChargedSheet(sphere.Q)
+      });
+      addFieldLine(group, pts, 0x65e7ff, 0.55);
+    }
+  }
+  for (const sheet of world.objects.filter(o => o.type === "sheet" && Math.abs(o.sigma) > 1e-8)) {
+    group.add(renderSheetFieldLines(sheet, density));
+  }
+  return group;
+}
+
+function renderBFieldLines(density) {
+  const group = new THREE.Group();
+  const wires = world.objects.filter(o => o.type === "wire");
+  const seedsPer = Math.max(6, Math.round(density));
+  for (const w of wires) {
+    const mid = w.start.clone().lerp(w.end, 0.5);
+    const ihat = w.end.clone().sub(w.start).normalize();
+    // build a basis perpendicular to the wire
+    const ref = Math.abs(ihat.y) < 0.9 ? new THREE.Vector3(0,1,0) : new THREE.Vector3(1,0,0);
+    const u = new THREE.Vector3().crossVectors(ihat, ref).normalize();
+    const v = new THREE.Vector3().crossVectors(ihat, u).normalize();
+    for (const radius of [0.5, 1.0, 1.6]) {
+      for (let i=0;i<seedsPer;i++){
+        const ang = (i/seedsPer) * Math.PI*2;
+        const offset = u.clone().multiplyScalar(Math.cos(ang)*radius).add(v.clone().multiplyScalar(Math.sin(ang)*radius));
+        const start = mid.clone().add(offset);
+        const pts = traceLine(start, (p)=>world.fieldB(p), { stepSize:0.14, maxSteps:140, bounds:7 });
+        if (pts.length > 3) {
+          // close the loop visually for a clean circle
+          addFieldLine(group, pts, 0x70e0b0, 0.6);
+        }
+      }
+    }
+  }
+  for (const d of world.objects.filter(o=>o.type==="mdipole")){
+    const n=d.normal(), ref=Math.abs(n.y)<0.9?new THREE.Vector3(0,1,0):new THREE.Vector3(1,0,0), u=n.clone().cross(ref).normalize(), v=n.clone().cross(u).normalize();
+    for(const r of [0.6,1.1,1.7]) for(let i=0;i<seedsPer;i++){ const a=2*Math.PI*i/seedsPer; const start=d.position.clone().addScaledVector(u,Math.cos(a)*r).addScaledVector(v,Math.sin(a)*r); const pts=traceLine(start,p=>world.fieldB(p),{stepSize:.12,maxSteps:220,bounds:7}); if(pts.length>3)addFieldLine(group,pts,0x70e0b0,.6); }
+  }
+  return group;
+}
+
+function renderVectorGrid(mode) {
+  const group = new THREE.Group();
+  const step = 1.6, extent = 6.4;
+  const fn = mode === "B" ? (p)=>world.fieldB(p) : (p)=>world.fieldE(p);
+  const color = mode === "B" ? 0x70e0b0 : 0x65e7ff;
+  for (let x=-extent;x<=extent;x+=step) for (let z=-extent;z<=extent;z+=step) {
+    const p = new THREE.Vector3(x, 0.02, z);
+    const v = fn(p);
+    const m = v.length();
+    if (m < 1e-4) continue;
+    const dir = v.clone().normalize();
+    const len = THREE.MathUtils.clamp(Math.sqrt(m)*0.4, 0.15, 0.9);
+    group.add(new THREE.ArrowHelper(dir, p, len, color, len*0.3, len*0.16));
+  }
+  return group;
+}
+
+// Small canvas-texture sprite label — chosen over a CSS2DRenderer overlay
+// because it lives inside the same WebGL scene graph (no second DOM layer
+// to keep in sync every frame) and this file has no label renderer yet.
+function makeLabelSprite(text, colorHex) {
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  const fontSize = 40;
+  ctx.font = `600 ${fontSize}px Inter, ui-sans-serif, sans-serif`;
+  const textW = ctx.measureText(text).width;
+  canvas.width = textW + 24; canvas.height = fontSize * 1.5;
+  ctx.font = `600 ${fontSize}px Inter, ui-sans-serif, sans-serif`;
+  ctx.fillStyle = "rgba(6,11,22,.72)";
+  ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(0, 0, canvas.width, canvas.height, 10) : ctx.rect(0, 0, canvas.width, canvas.height);
+  ctx.fill();
+  ctx.fillStyle = "#" + colorHex.toString(16).padStart(6, "0");
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, 12, canvas.height / 2);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.minFilter = THREE.LinearFilter;
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
+  const px = 0.0055;
+  sprite.scale.set(canvas.width * px, canvas.height * px, 1);
+  sprite.renderOrder = 10;
+  return sprite;
+}
+
+function addVectorArrow(group, origin, vector, color, scale, { minLength=0.16, label=null } = {}) {
+  const magnitude = vector.length();
+  if (!isFinite(magnitude) || magnitude < 1e-6) return;
+  const direction = vector.clone().normalize();
+  const length = THREE.MathUtils.clamp(Math.sqrt(magnitude) * scale, minLength, 1.8);
+  group.add(new THREE.ArrowHelper(direction, origin, length, color, length * 0.24, length * 0.13));
+  if (label) {
+    const sprite = makeLabelSprite(`${label} = ${magnitude.toFixed(2)}`, color);
+    sprite.position.copy(origin).addScaledVector(direction, length + 0.14);
+    group.add(sprite);
+  }
+}
+
+// Torque/angular-velocity get a curved arrow (partial ring + cone head) so
+// they read as a moment/rotation rather than a displacement — the one
+// genuinely new visual primitive this overlay needs.
+function addCurvedVectorArrow(group, origin, vector, color, scale, { label=null } = {}) {
+  const magnitude = vector.length();
+  if (!isFinite(magnitude) || magnitude < 1e-6) return;
+  const axis = vector.clone().normalize();
+  const radius = THREE.MathUtils.clamp(Math.sqrt(magnitude) * scale * 0.5, 0.14, 0.55);
+  const arcAngle = Math.PI * 1.5;
+  const curve = new THREE.EllipseCurve(0, 0, radius, radius, 0, arcAngle, false, 0);
+  const pts = curve.getPoints(28).map(p => new THREE.Vector3(p.x, p.y, 0));
+  const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), axis);
+  for (const p of pts) p.applyQuaternion(q).add(origin);
+  group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color })));
+  const tip = pts[pts.length - 1], prev = pts[pts.length - 2];
+  const tangent = tip.clone().sub(prev).normalize();
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(radius * 0.2, radius * 0.42, 10), new THREE.MeshBasicMaterial({ color }));
+  cone.position.copy(tip);
+  cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), tangent);
+  group.add(cone);
+  if (label) {
+    const sprite = makeLabelSprite(`${label} = ${magnitude.toFixed(2)}`, color);
+    sprite.position.copy(tip).addScaledVector(tangent, 0.16);
+    group.add(sprite);
+  }
+}
+
+function renderForceTorqueOverlays() {
+  const group=new THREE.Group(), scale=Number($("vectorScale").value);
+  for(const obj of world.objects){
+    const F=netForceOn(obj), T=netTorqueOn(obj);
+    if(obj.fixed) { if(F.lengthSq()>1e-10) addVectorArrow(group,obj.position,F.clone().negate(),0x93a0b8,scale,{label:"H"}); }
+    else if(F.lengthSq()>1e-10) addVectorArrow(group,obj.position,F,0xff6d82,scale,{label:"Fnet"});
+    if(T.lengthSq()>1e-10 && obj.angularVelocity) addCurvedVectorArrow(group,obj.position,T,0xffe27a,scale*.75,{label:"τ"});
+    if(obj.velocity && obj.velocity.lengthSq()>1e-6) addVectorArrow(group,obj.position,obj.velocity,0x65e7ff,scale*.6,{label:"v"});
+    if(obj.type!=='wire' && obj.type!=='loop' && obj.type!=='mdipole' && obj.velocity && obj.velocity.lengthSq()>1e-10){
+      const q=obj.q??0, B=world.fieldB(obj.position,obj.id); if(Math.abs(q)>1e-10&&B.lengthSq()>1e-10) addVectorArrow(group,obj.position,obj.velocity.clone().cross(B).multiplyScalar(q),0xb98bff,scale,{label:"qv×B"});
+    }
+  }
+  return group;
+}
+let fieldMode = "E";
+function rebuildFields() {
+  fieldGroup.clear();
+  overlayGroup.clear();
+  const density = Number($("density").value);
+  const showLines = $("showLines").checked;
+  const showVectors = $("showVectors").checked;
+  if (fieldMode === "E") {
+    if (showLines) fieldGroup.add(renderEFieldLines(density));
+    if (showVectors) fieldGroup.add(renderVectorGrid("E"));
+  } else if (fieldMode === "B") {
+    if (showLines) fieldGroup.add(renderBFieldLines(density));
+    if (showVectors) fieldGroup.add(renderVectorGrid("B"));
+  }
+  if (fieldMode !== "EMW" && $("showOverlays").checked) {
+    overlayGroup.add(renderForceTorqueOverlays());
+  }
+  fieldDirty = false;
+}
+
+// Cheap per-frame refresh for anything moving: redraws object meshes and
+// vector overlays WITHOUT retracing the (expensive) static field lines.
+// rebuildFields() stays event-driven (topology changes only); this runs
+// every animation frame once the sim is playing or being scrubbed.
+function updateDynamicVisuals() {
+  // Object meshes and force/torque overlays are dynamic, but field lines are
+  // rebuilt explicitly by animate() AFTER the physics step. Keeping the two
+  // responsibilities separate prevents a second stale/static field cache.
+  rebuildObjectMeshes();
+  overlayGroup.clear();
+  if (fieldMode !== "EMW" && $("showOverlays").checked) {
+    overlayGroup.add(renderForceTorqueOverlays());
+  }
+}
+
+/* ------------------------ accelerating-charge radiation ------------------ */
+/*
+ * Non-relativistic radiation model (Larmor / far-zone fields).
+ * For an accelerating point charge, the radiation-zone electric field is
+ *
+ *   E_rad = K q [ n x (n x a) ] / (c^2 R)
+ *
+ * and B_rad = (1/c) n x E_rad.
+ *
+ * This is a far-zone approximation, not a full Lienard-Wiechert solver. It is
+ * therefore used for radiation visualization and radiated-power accounting,
+ * while the existing Coulomb/Biot-Savart solver remains the near-field
+ * quasi-static dynamics model. Radiation reaction is deliberately not added
+ * because it requires a relativistic/self-force treatment and should not be
+ * silently approximated by damping.
+ */
+const radiationState = new Map();
+const RADIATION_HISTORY = 1.8;
+const RADIATION_SAMPLE_DT = 0.025;
+const RADIATION_MAX_SAMPLES = 72;
+
+function radiationAcceleration(obj){
+  if (!obj || obj.type !== 'charge' || !obj.velocity) return new THREE.Vector3();
+  return obj._lastAcceleration ? obj._lastAcceleration.clone() : new THREE.Vector3();
+}
+function larmorPower(obj){
+  if (!obj || obj.type !== 'charge') return 0;
+  const a=radiationAcceleration(obj).length();
+  const q=Math.abs(obj.q||0);
+  return (2/3)*K*q*q*a*a/(C_LIGHT*C_LIGHT*C_LIGHT);
+}
+function radiationFieldAt(charge, observer, sourceState){
+  const r=observer.clone().sub(sourceState.position);
+  const R=Math.max(r.length(),0.18);
+  const n=r.multiplyScalar(1/R);
+  const a=sourceState.acceleration;
+  const transverse=n.clone().cross(n.clone().cross(a)).multiplyScalar(K*charge.q/(C_LIGHT*C_LIGHT*R));
+  const B=n.clone().cross(transverse).multiplyScalar(1/C_LIGHT);
+  return {E:transverse,B};
+}
+function recordRadiationHistory(){
+  for(const obj of world.objects){
+    if(obj.type!=='charge' || !obj.traceRadiation) continue;
+    let st=radiationState.get(obj.id);
+    if(!st) radiationState.set(obj.id,st={samples:[],last:-Infinity});
+    if(simTime-st.last < RADIATION_SAMPLE_DT) continue;
+    st.samples.push({t:simTime,position:obj.position.clone(),acceleration:radiationAcceleration(obj)});
+    st.last=simTime;
+    while(st.samples.length && st.samples[0].t < simTime-RADIATION_HISTORY) st.samples.shift();
+    if(st.samples.length>RADIATION_MAX_SAMPLES) st.samples.splice(0,st.samples.length-RADIATION_MAX_SAMPLES);
+  }
+}
+function radiationWaveStats(obj){
+  const st=radiationState.get(obj.id);
+  if(!st?.samples?.length) return {E:0,B:0,power:larmorPower(obj),frequency:null,wavelength:null,c:C_LIGHT};
+  const c=C_LIGHT;
+  let maxE=0, maxB=0;
+  // Sample the far-zone field on a transverse observation point. This keeps
+  // displayed wave properties tied to the actual calculated radiation field.
+  for(const sample of st.samples.slice(-12)){
+    const a=sample.acceleration;
+    const am=a.length();
+    if(am<1e-9) continue;
+    const n=a.clone().normalize().cross(new THREE.Vector3(0,1,0));
+    if(n.lengthSq()<1e-10) n.set(1,0,0); else n.normalize();
+    const probe=sample.position.clone().add(n.multiplyScalar(4));
+    const fb=radiationFieldAt(obj,probe,sample);
+    maxE=Math.max(maxE,fb.E.length());
+    maxB=Math.max(maxB,fb.B.length());
+  }
+  // A single frequency is not defined for arbitrary acceleration. Estimate it
+  // only when the acceleration history shows repeated magnitude peaks.
+  let frequency=null;
+  const vals=st.samples.map(x=>x.acceleration.length());
+  const peaks=[];
+  for(let i=1;i<vals.length-1;i++) if(vals[i]>vals[i-1] && vals[i]>=vals[i+1] && vals[i]>1e-6) peaks.push(st.samples[i].t);
+  if(peaks.length>=2){
+    const periods=[]; for(let i=1;i<peaks.length;i++) periods.push(peaks[i]-peaks[i-1]);
+    const avg=periods.reduce((a,b)=>a+b,0)/periods.length;
+    if(avg>0) frequency=1/avg;
+  }
+  return {E:maxE,B:maxB,power:larmorPower(obj),frequency,wavelength:frequency?c/frequency:null,c};
+}
+
+function makeWavefront(sample, radius, opacity, color=0xffb45f){
+  // A pair of latitude/longitude curves approximates the expanding radiation
+  // front without introducing a dense vector field. Opacity is controlled by
+  // age; field strength is reflected by the wavefront brightness.
+  const g=new THREE.Group();
+  const rings=[0, Math.PI*0.5, Math.PI];
+  for(const polar of rings){
+    const pts=[];
+    const rr=Math.max(0.01,radius*Math.sin(polar));
+    const y=radius*Math.cos(polar);
+    for(let i=0;i<=48;i++){
+      const a=2*Math.PI*i/48;
+      pts.push(new THREE.Vector3(rr*Math.cos(a),y,rr*Math.sin(a)));
+    }
+    if(pts.length>1) g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color,transparent:true,opacity,depthWrite:false})));
+  }
+  g.position.copy(sample.position);
+  return g;
+}
+
+function renderChargeRadiation(){
+  radiationGroup.clear();
+  if(!$('showRadiation')?.checked) return;
+  const now=simTime;
+  for(const obj of world.objects){
+    if(obj.type!=='charge') continue;
+    const st=radiationState.get(obj.id);
+    if(!st?.samples?.length) continue;
+    for(const sample of st.samples){
+      const age=now-sample.t;
+      if(age<0 || age>RADIATION_HISTORY) continue;
+      const a=sample.acceleration.length();
+      if(a<1e-7) continue;
+      const radius=C_LIGHT*age;
+      if(radius<0.10 || radius>8.0) continue;
+      const strength=Math.min(1, a/(1+a));
+      const alpha=Math.max(0.025, 0.16*strength*(1-age/RADIATION_HISTORY));
+      radiationGroup.add(makeWavefront(sample,radius,alpha));
+    }
+  }
+}
+
+function radiationReadout(){
+  const el=$('radiationReadout');
+  if(!el) return;
+  const radiators=world.objects.filter(o=>o.type==='charge' && o.traceRadiation);
+  if(!radiators.length){
+    el.textContent='Enable “Trace radiation” to emit a calculated radiation wavefront. Charged bodies remain visible here; enable “Trace trajectory” on a moving body to display its persistent trajectory.';
+    return;
+  }
+  const rows=[];
+  for(const o of radiators){
+    const s=radiationWaveStats(o);
+    const v=o.velocity?.length()||0, a=radiationAcceleration(o).length();
+    rows.push(`<div class="analysis-row"><span>Charge ${o.id}</span><b>v=${v.toFixed(2)}, a=${a.toFixed(2)}</b></div>`);
+    rows.push(`<div class="analysis-row"><span>Radiation E / B</span><b>${s.E.toExponential(2)} / ${s.B.toExponential(2)}</b></div>`);
+    rows.push(`<div class="analysis-row"><span>Larmor power</span><b>${s.power.toExponential(2)}</b></div>`);
+    rows.push(`<div class="analysis-row"><span>Wave</span><b>${s.frequency?`f=${s.frequency.toFixed(2)}, λ=${s.wavelength.toFixed(2)}`:'no single f (non-periodic/insufficient history)'}</b></div>`);
+  }
+  rows.push(`<div class="analysis-row"><span>Propagation speed</span><b>c=${C_LIGHT.toFixed(2)} sim units</b></div>`);
+  rows.push(`<div class="analysis-tag">Far-zone, non-relativistic radiation approximation</div>`);
+  el.innerHTML=rows.join('');
+}
+
+/* The old ideal plane-wave comb is intentionally not used. An arbitrary
+ * accelerating charge does not have a user-selectable amplitude/wavelength /
+ * polarization. The EM Wave tab now visualizes the radiation generated by the
+ * actual charges and derives its displayed properties from E_rad, B_rad and
+ * the particle history. */
+const emw = { on:true };
+
+/* ------------------------- repaired transport/UI ------------------------- */
+let playing = false;
+let simTime = 0;
+let lastFieldVisualUpdate = -Infinity;
+let simAccumulator = 0;
+let fieldDirty = true;
+const SIM_DT = 1/120;
+function togglePlay(force) {
+  playing = typeof force === "boolean" ? force : !playing;
+  const b = document.getElementById("playBtn");
+  if (b) b.textContent = playing ? "⏸" : "▶";
+  if (b) b.classList.toggle("active", playing);
+}
+function stepSimulation(dt = 1/60) {
+  stepDynamics(dt);
+  simTime += dt;
+  const label = document.getElementById("scrubLabel");
+  if (label) label.textContent = `t = ${simTime.toFixed(1)}s`;
+  // Dynamics changes the source positions/orientations. Mark the field-line
+  // geometry dirty; the animation loop retraces it once after all substeps
+  // for this rendered frame. This avoids tracing 120 times per second when
+  // SIM_DT is 1/120 while still keeping the displayed field synchronized.
+  fieldDirty = true;
+}
+function resetSimulationTime() {
+  simTime = 0; simAccumulator = 0; playing = false;
+  for (const o of world.objects) {
+    if (o._snapshot) restoreSnapshot(o, o._snapshot);
+    else if (o.velocity) { o.velocity.set(0,0,0); if (o.angularVelocity) o.angularVelocity.set(0,0,0); }
+  }
+  togglePlay(false);
+  fieldDirty = true;
+  onSceneChanged();
+}
+function wireTransportControls() {
+  const play = document.getElementById("playBtn");
+  const back = document.getElementById("stepBackBtn");
+  const fwd = document.getElementById("stepFwdBtn");
+  const reset = document.getElementById("resetTimeBtn");
+  const speed = document.getElementById("speedSlider");
+  const speedLabel = document.getElementById("speedLabel");
+  play?.addEventListener("click", () => togglePlay());
+  fwd?.addEventListener("click", () => { stepSimulation(1/60); rebuildFields(); updateDynamicVisuals(); });
+  back?.addEventListener("click", () => {
+    // Backward stepping cannot simply decrement the clock: the object state
+    // must also be rewound. Keep this control conservative and reset to the
+    // last stored snapshot when going back to t=0.
+    resetSimulationTime();
+  });
+  reset?.addEventListener("click", resetSimulationTime);
+  speed?.addEventListener("input", e => { if(speedLabel) speedLabel.textContent = `${Number(e.target.value).toFixed(1)}×`; });
+}
+
+/* ------------------------------- UI wiring -------------------------------- */
+
+function addObject(type) {
+  const def = objectTypes[type];
+  if (!def) return;
+  const cfg = { id: nextId() };
+  const x = (Math.random() - 0.5) * 3;
+  const y = (Math.random() - 0.5) * 2 + 0.6;
+  const z = (Math.random() - 0.5) * 3;
+  if (type === "wire") Object.assign(cfg, { sx:-2, sy:0, sz:z, ex:2, ey:0, ez:z, I:2, mass:1, fixed:true, vx:0,vy:0,vz:0 });
+  else if (type === "sheet") Object.assign(cfg, { x, y, z, sigma:1, size:4, theta:0, phi:0 });
+  else if (type === "sphere") Object.assign(cfg, { x, y, z, Q:1, radius:0.9, conducting:false });
+  else if (type === "ring") Object.assign(cfg, { x, y, z, Q:1, radius:1.2, theta:Math.PI/2, phi:0 });
+  else if (type === "loop") Object.assign(cfg, { x, y, z, I:2, radius:1.2, theta:Math.PI/2, phi:0, mass:1, momentOfInertia:1, fixed:false, vx:0,vy:0,vz:0,wx:0,wy:0,wz:0 });
+  else if (type === "mdipole") Object.assign(cfg, { x, y, z, m:2, theta:Math.PI/2, phi:0, mass:1, momentOfInertia:1, fixed:false, vx:0,vy:0,vz:0,wx:0,wy:0,wz:0 });
+  else Object.assign(cfg, { x, y, z, q:1, d:1.2 });
+  const obj = new def.cls(cfg);
+  world.add(obj);
+  selectedId = obj.id;
+  onSceneChanged();
+  toast(def.schema.label + " added");
+}
+
+let selectedId = null;
+
+function renderObjList() {
+  const list = $("objlist");
+  list.innerHTML = "";
+  for (const obj of world.objects) {
+    const row = document.createElement("div");
+    row.className = "objitem" + (obj.id === selectedId ? " selected" : "");
+    const def = objectTypes[obj.type];
+    row.innerHTML = `<span>${def.schema.label} · ${obj.id}</span><span class="del">✕</span>`;
+    row.addEventListener("click", (e) => {
+      if (e.target.classList.contains("del")) {
+        world.remove(obj.id);
+        if (selectedId === obj.id) selectedId = null;
+        onSceneChanged();
+        return;
+      }
+      selectedId = obj.id;
+      renderObjList(); renderEditor();
+    });
+    list.appendChild(row);
+  }
+}
+
+function getFieldValue(obj, field) {
+  if (field.key === "conducting" || field.key === "fixed") return obj[field.key] ? 1 : 0;
+  if (field.target) return obj[field.target][field.key.slice(-1)]; // x/y/z off Vector3
+  return obj[field.key];
+}
+function setFieldValue(obj, field, value) {
+  if (field.key === "conducting" || field.key === "fixed") obj[field.key] = value >= 0.5;
+  else if (field.target) obj[field.target][field.key.slice(-1)] = value;
+  else obj[field.key] = value;
+  if (obj.type === "wire") obj.position = obj.start.clone().lerp(obj.end, 0.5);
+  // Editing a pinned object's own placement redefines its "last placed
+  // state" so Reset object / Reset time return to the edited pose, not
+  // whatever it happened to be at construction time.
+  if (obj.fixed && obj._snapshot) obj._snapshot = snapshotOf(obj);
+}
+
+// The registry schema is also the serialization contract. A future object
+// type only needs a schema and constructor that accept these values; import
+// and export do not need another type-specific branch.
+function serializeObject(obj) {
+  const def = objectTypes[obj.type];
+  if (!def) return null;
+  const data = { type: obj.type, id: obj.id, traceTrajectory: !!obj.traceTrajectory, traceRadiation: !!obj.traceRadiation };
+  for (const field of def.schema.fields) data[field.key] = getFieldValue(obj, field);
+  return data;
+}
+
+function deserializeObject(data) {
+  const def = objectTypes[data?.type];
+  if (!def) throw new Error(`Unsupported object type: ${data?.type ?? "unknown"}`);
+  return new def.cls({ ...data, id: data.id || nextId() });
+}
+
+function renderEditor() {
+  const el = $("editor");
+  const obj = world.objects.find(o => o.id === selectedId);
+  if (!obj) { el.innerHTML = `<p style="color:var(--muted);font-size:12px">Select an object to edit its properties.</p>`; return; }
+  const def = objectTypes[obj.type];
+  el.innerHTML = "";
+  for (const field of def.schema.fields) {
+    const row = document.createElement("div");
+    row.className = "row";
+    const val = getFieldValue(obj, field);
+    row.innerHTML = `<label>${field.label}</label><input type="number" step="${field.step}" min="${field.min}" max="${field.max}" value="${val.toFixed(2)}">`;
+    const input = row.querySelector("input");
+    input.addEventListener("input", () => {
+      setFieldValue(obj, field, Number(input.value));
+      onSceneChanged(true);
+    });
+    el.appendChild(row);
+  }
+  // Movable objects — including magnetic objects (current loops and magnetic
+  // dipoles) — expose the same Pin/Unpin controls. Pinning freezes both
+  // translation and rotation, so magnetic force/torque is not integrated while
+  // the object is pinned.
+  if (obj.velocity && ["charge","dipole","sphere","ring","loop","mdipole","wire"].includes(obj.type)) {
+    if (obj.type === "charge") {
+      const radRow=document.createElement("div"); radRow.className="row";
+      radRow.innerHTML=`<label>Trace radiation</label><input type="checkbox" ${obj.traceRadiation ? "checked" : ""} style="width:auto;justify-self:start">`;
+      radRow.querySelector("input").addEventListener("change",e=>{ obj.traceRadiation=e.target.checked; if(!e.target.checked) radiationState.delete(obj.id); });
+      el.appendChild(radRow);
+    }
+    const trailRow = document.createElement("div");
+    trailRow.className = "row";
+    trailRow.innerHTML = `<label>Trace trajectory</label><input type="checkbox" ${obj.traceTrajectory ? "checked" : ""} style="width:auto;justify-self:start">`;
+    trailRow.querySelector("input").addEventListener("change", e => {
+      obj.traceTrajectory = e.target.checked;
+      if (!obj.traceTrajectory) clearTrajectory(obj);
+      else resetTrajectory(obj);
+      updateDynamicVisuals();
+    });
+    el.appendChild(trailRow);
+    const actions = document.createElement("div");
+    actions.className = "editor-actions";
+    const pinBtn = document.createElement("button");
+    pinBtn.textContent = obj.fixed ? "Unpin" : "Pin";
+    if (obj.fixed) pinBtn.classList.add("pinned");
+    pinBtn.addEventListener("click", () => {
+      if (obj.fixed) releaseObject(obj); else pinObject(obj);
+      renderEditor(); updateDynamicVisuals();
+    });
+    const releaseBtn = document.createElement("button");
+    releaseBtn.textContent = "Release";
+    releaseBtn.title = "Unpin, start from rest";
+    releaseBtn.addEventListener("click", () => {
+      releaseObject(obj, { zeroVelocity: true });
+      renderEditor(); updateDynamicVisuals(); toast("Released — accelerating under the field");
+    });
+    const throwBtn = document.createElement("button");
+    throwBtn.textContent = "Throw";
+    throwBtn.title = "Unpin, launch with the vx/vy/vz above";
+    throwBtn.addEventListener("click", () => {
+      releaseObject(obj);
+      if (!playing) togglePlay(true);
+      renderEditor(); updateDynamicVisuals(); toast("Thrown");
+    });
+    const resetBtn = document.createElement("button");
+    resetBtn.textContent = "Reset object";
+    resetBtn.title = "Back to its last pinned/thrown state";
+    resetBtn.addEventListener("click", () => {
+      resetObjectToSnapshot(obj);
+      renderEditor(); updateDynamicVisuals(); toast("Object reset");
+    });
+    actions.append(pinBtn, releaseBtn, throwBtn, resetBtn);
+    el.appendChild(actions);
+  }
+}
+
+function onSceneChanged(skipList=false) {
+  world.invalidateFieldCaches();
+  fieldDirty = true;
+  rebuildObjectMeshes();
+  rebuildFields();
+  if (!skipList) renderObjList();
+  else renderEditor();
+}
+
+document.querySelectorAll("[data-add]").forEach(btn => btn.addEventListener("click", () => addObject(btn.dataset.add)));
+
+document.getElementById("modebar").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-mode]");
+  if (!btn) return;
+  fieldMode = btn.dataset.mode;
+  document.querySelectorAll("#modebar button").forEach(b => b.classList.toggle("active", b === btn));
+  $("emwSection").style.display = fieldMode === "EMW" ? "block" : "none";
+  $("fieldSection").style.display = fieldMode === "EMW" ? "none" : "block";
+  emwGroup.visible = false;
+  radiationGroup.visible = fieldMode === "EMW";
+  fieldGroup.visible = fieldMode !== "EMW";
+  overlayGroup.visible = fieldMode !== "EMW";
+  objectGroup.visible = true;
+  trailGroup.visible = true;
+  grid.visible = fieldMode !== "EMW";
+  rebuildFields();
+  if (fieldMode === "EMW") { renderChargeRadiation(); radiationReadout(); }
+});
+
+["showLines","showVectors","showOverlays"].forEach(id => $(id).addEventListener("change", ()=>rebuildFields()));
+$("density").addEventListener("input", (e)=>{ $("densityOut").textContent = e.target.value; rebuildFields(); });
+$("vectorScale").addEventListener("input", (e)=>{ $("vectorScaleOut").textContent = e.target.value; rebuildFields(); });
+
+$("showRadiation").addEventListener("change", () => { renderChargeRadiation(); radiationReadout(); });
+
+$("resetBtn").addEventListener("click", () => { world.objects = []; selectedId = null; seedDefaultScene(); onSceneChanged(); toast("Scene reset"); });
+
+$("exportBtn").addEventListener("click", () => {
+  const data = world.objects.map(serializeObject).filter(Boolean);
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type:"application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = "field_lab_scene.json"; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 0);
+});
+$("importBtn").addEventListener("click", () => {
+  const inp = document.createElement("input"); inp.type = "file"; inp.accept = "application/json";
+  inp.addEventListener("change", async () => {
+    const file = inp.files[0]; if (!file) return;
+    try {
+      const data = JSON.parse(await file.text());
+      if (!Array.isArray(data)) throw new Error("Scene JSON must be an array");
+      world.objects = data.map(deserializeObject);
+      const numericIds = world.objects.map(o => Number(String(o.id).replace(/\D/g, ""))).filter(Number.isFinite);
+      if (numericIds.length) uid = Math.max(uid, ...numericIds) + 1;
+      selectedId = null; onSceneChanged(); toast("Scene imported");
+    } catch (err) {
+      toast(`Import failed: ${err.message}`);
+    }
+  });
+  inp.click();
+});
+
+/* -------------------------------- bootstrap -------------------------------- */
+
+function seedDefaultScene() {
+  world.add(new PointCharge3D({ id: nextId(), x:-1.6, y:0.6, z:0, q:1.4 }));
+  world.add(new PointCharge3D({ id: nextId(), x:1.6, y:0.6, z:0, q:-1.4 }));
+  world.add(new StraightWire3D({ id: nextId(), sx:0, sy:-3, sz:2.5, ex:0, ey:3, ez:2.5, I:2.5 }));
+}
+seedDefaultScene();
+wireTransportControls();
+onSceneChanged();
+
+let last = performance.now();
+function animate(now) {
+  const dt = Math.min(0.05, (now - last)/1000); last = now;
+  controls.update();
+  recordRadiationHistory();
+  if (playing) {
+    const speed = Number(document.getElementById("speedSlider")?.value || 1);
+    simAccumulator += dt * speed;
+    while (simAccumulator >= SIM_DT) { stepSimulation(SIM_DT); simAccumulator -= SIM_DT; }
+    // Field topology is expensive to retrace, especially for Biot–Savart B.
+    // Update it at a modest cadence while motion continues; forces remain
+    // evaluated every physics step, so this is purely a rendering optimization.
+    if (fieldDirty && simTime - lastFieldVisualUpdate > (fieldMode === "B" ? 0.12 : 0.05)) {
+      rebuildFields();
+      lastFieldVisualUpdate = simTime;
+    }
+    updateDynamicVisuals(false);
+  }
+  // Advance trajectory visualization only from the physics clock. No new
+  // points are added for stationary objects.
+  updateTrajectory(dt);
+  if (fieldMode === "EMW") { renderChargeRadiation(); radiationReadout(); }
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+}
+resize();
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

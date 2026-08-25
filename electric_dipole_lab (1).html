@@ -1,0 +1,1316 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Electrostatics Lab</title>
+  <style>
+    :root {
+      --bg: #060b16;
+      --bg-2: #0a1221;
+      --panel: rgba(13, 23, 41, 0.84);
+      --panel-strong: rgba(16, 29, 50, 0.96);
+      --line: rgba(145, 183, 223, 0.18);
+      --line-bright: rgba(145, 183, 223, 0.34);
+      --text: #e8f2ff;
+      --muted: #8fa7c4;
+      --cyan: #65e7ff;
+      --blue: #7c9cff;
+      --warm: #ffb46b;
+      --danger: #ff6d82;
+      --green: #70e0b0;
+      --shadow: 0 20px 55px rgba(0, 0, 0, .32);
+      --radius: 14px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); }
+    body { overflow: hidden; }
+    button, input, select { font: inherit; }
+    button { color: inherit; }
+    .app { height: 100vh; display: grid; grid-template-rows: 64px 1fr 238px; background:
+      radial-gradient(circle at 50% -20%, rgba(41, 93, 157, .18), transparent 45%),
+      linear-gradient(135deg, #060b16 0%, #091221 50%, #070d19 100%); }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 0 22px; border-bottom: 1px solid var(--line); background: rgba(5, 10, 20, .7); backdrop-filter: blur(18px); z-index: 5; }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 260px; }
+    .brand-mark { width: 32px; height: 32px; position: relative; border: 1px solid rgba(101,231,255,.45); border-radius: 50%; box-shadow: 0 0 24px rgba(101,231,255,.25), inset 0 0 20px rgba(101,231,255,.12); }
+    .brand-mark:before, .brand-mark:after { content: ""; position: absolute; top: 50%; left: 50%; width: 20px; height: 1px; background: var(--cyan); transform-origin: center; }
+    .brand-mark:before { transform: translate(-50%, -50%) rotate(35deg); }
+    .brand-mark:after { transform: translate(-50%, -50%) rotate(-35deg); background: var(--warm); }
+    .brand h1 { font-size: 14px; letter-spacing: .14em; text-transform: uppercase; margin: 0; }
+    .brand p { color: var(--muted); font-size: 11px; margin: 3px 0 0; letter-spacing: .03em; }
+    .top-actions { display: flex; align-items: center; gap: 10px; }
+    .mode-select, .select, .number { color: var(--text); background: #0b172a; border: 1px solid var(--line-bright); border-radius: 8px; padding: 7px 9px; outline: none; }
+    .mode-select { min-width: 145px; }
+    .status { display: inline-flex; align-items: center; gap: 7px; padding: 8px 11px; border-radius: 100px; color: #a9f8d4; background: rgba(55, 177, 130, .1); border: 1px solid rgba(112, 224, 176, .22); font-size: 11px; text-transform: uppercase; letter-spacing: .12em; }
+    .status:before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 12px var(--green); }
+    .status.paused { color: #ffd39a; border-color: rgba(255, 180, 107, .28); background: rgba(255, 180, 107, .1); }
+    .status.paused:before { background: var(--warm); box-shadow: 0 0 12px var(--warm); }
+    .workspace { min-height: 0; display: grid; grid-template-columns: 260px minmax(400px, 1fr) 300px; gap: 10px; padding: 10px; }
+    .panel { min-height: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); box-shadow: var(--shadow); backdrop-filter: blur(18px); overflow: hidden; }
+    .panel-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 15px 11px; color: var(--text); font-size: 11px; letter-spacing: .15em; text-transform: uppercase; border-bottom: 1px solid var(--line); }
+    .panel-title small { color: var(--muted); font-size: 10px; letter-spacing: .04em; text-transform: none; }
+    .scroll { overflow: auto; min-height: 0; }
+    .left, .right { display: flex; flex-direction: column; }
+    .left .scroll, .right .scroll { flex: 1; }
+    .section { padding: 13px 14px; border-bottom: 1px solid rgba(145,183,223,.1); }
+    .section:last-child { border-bottom: 0; }
+    .section-label { color: var(--muted); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; margin: 0 0 9px; }
+    .library { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+    .library-card { cursor: pointer; min-height: 62px; text-align: left; padding: 9px; border: 1px solid var(--line); border-radius: 10px; background: rgba(19, 35, 60, .46); transition: .2s ease; }
+    .library-card:hover { transform: translateY(-2px); border-color: rgba(101,231,255,.52); background: rgba(28, 57, 89, .6); }
+    .object-glyph { height: 27px; display: flex; align-items: center; color: var(--cyan); font-size: 20px; }
+    .library-card:nth-child(2n) .object-glyph { color: var(--warm); }
+    .library-card span { display: block; font-size: 10px; color: var(--text); }
+    .experiment-list { display: grid; gap: 6px; }
+    .experiment { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 8px 9px; text-align: left; border: 1px solid transparent; border-radius: 8px; background: rgba(255,255,255,.025); cursor: pointer; font-size: 11px; }
+    .experiment:hover { border-color: var(--line-bright); background: rgba(101,231,255,.08); }
+    .experiment span:last-child { color: var(--muted); font-size: 10px; }
+    .canvas-panel { position: relative; min-width: 0; min-height: 0; }
+    #world { width: 100%; height: 100%; display: block; cursor: crosshair; }
+    .world-toolbar { position: absolute; top: 12px; left: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; max-width: calc(100% - 24px); }
+    .tool, .action { cursor: pointer; border: 1px solid var(--line-bright); border-radius: 8px; padding: 7px 9px; background: rgba(10, 22, 39, .76); color: var(--muted); font-size: 11px; transition: .18s ease; }
+    .tool:hover, .action:hover, .tool.active { color: var(--text); border-color: rgba(101,231,255,.62); background: rgba(36, 77, 110, .75); }
+    .action.primary { color: #02131d; background: var(--cyan); border-color: var(--cyan); font-weight: 700; }
+    .action.primary:hover { box-shadow: 0 0 22px rgba(101,231,255,.38); }
+    .action.warm { color: #201109; background: var(--warm); border-color: var(--warm); font-weight: 700; }
+    .canvas-legend { position: absolute; right: 13px; bottom: 12px; display: grid; gap: 6px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: rgba(6,13,24,.75); font-size: 10px; color: var(--muted); pointer-events: none; }
+    .legend-row { display: flex; align-items: center; gap: 7px; }
+    .swatch { width: 26px; height: 5px; border-radius: 10px; }
+    .swatch.potential { background: linear-gradient(90deg, #4269df, #d7e8ff 50%, #ff9c58); }
+    .swatch.field { background: linear-gradient(90deg, rgba(101,231,255,.2), var(--cyan)); }
+    .hud { position: absolute; left: 13px; bottom: 13px; display: grid; grid-template-columns: repeat(4, minmax(68px, 1fr)); gap: 6px; max-width: 490px; pointer-events: none; }
+    .metric { padding: 8px 9px; border: 1px solid var(--line); border-radius: 9px; background: rgba(6, 14, 26, .78); }
+    .metric label { display: block; color: var(--muted); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
+    .metric strong { display: block; margin-top: 3px; font-size: 13px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+    .control-row { display: grid; grid-template-columns: 42px 1fr 59px; align-items: center; gap: 8px; margin: 9px 0; }
+    .control-row label { color: var(--muted); font-size: 11px; }
+    .control-row output { text-align: right; color: var(--cyan); font-size: 10px; font-variant-numeric: tabular-nums; }
+    input[type="range"] { width: 100%; accent-color: var(--cyan); }
+    input[type="number"] { width: 100%; min-width: 0; padding: 5px 6px; border-radius: 6px; color: var(--cyan); background: #091425; border: 1px solid var(--line); font-size: 10px; }
+    .input-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+    .mini-label { display: block; color: var(--muted); font-size: 9px; margin: 0 0 3px; }
+    .toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .toggle { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 10px; cursor: pointer; }
+    .toggle input { accent-color: var(--cyan); }
+    .button-row { display: flex; gap: 6px; flex-wrap: wrap; }
+    .right .section { padding: 12px 13px; }
+    .selected-card { padding: 11px; border-radius: 10px; border: 1px solid rgba(101,231,255,.28); background: linear-gradient(135deg, rgba(45, 102, 139, .23), rgba(18, 27, 49, .62)); }
+    .selected-card h3 { margin: 0 0 3px; font-size: 14px; }
+    .selected-card p { color: var(--muted); margin: 0; font-size: 10px; line-height: 1.45; }
+    .readout { display: grid; grid-template-columns: 1fr auto; gap: 7px 10px; font-size: 10px; }
+    .readout span:nth-child(odd) { color: var(--muted); }
+    .readout span:nth-child(even) { color: var(--text); text-align: right; font-variant-numeric: tabular-nums; }
+    .vector-key { display: flex; flex-wrap: wrap; gap: 7px 10px; }
+    .vector-key span { display: inline-flex; align-items: center; gap: 5px; font-size: 9px; color: var(--muted); }
+    .vector-dot { width: 7px; height: 7px; border-radius: 50%; }
+    .vector-dot.e { background: var(--cyan); box-shadow: 0 0 7px var(--cyan); }
+    .vector-dot.f { background: var(--warm); box-shadow: 0 0 7px var(--warm); }
+    .vector-dot.p { background: #c88cff; box-shadow: 0 0 7px #c88cff; }
+    .vector-dot.v { background: var(--green); box-shadow: 0 0 7px var(--green); }
+     .vector-dot.h { background: var(--danger); box-shadow: 0 0 7px var(--danger); }
+    .bottom { min-height: 0; display: grid; grid-template-columns: 1.25fr .78fr .82fr; gap: 10px; padding: 0 10px 10px; }
+    .bottom-panel { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+    .graph-wrap { position: relative; flex: 1; min-height: 0; padding: 4px 10px 9px; }
+    #graph { display: block; width: 100%; height: 100%; }
+    .graph-select { position: absolute; top: 9px; right: 10px; font-size: 10px; padding: 4px 6px; }
+    .equation { padding: 10px 13px; border-bottom: 1px solid rgba(145,183,223,.1); }
+    .equation:last-child { border-bottom: 0; }
+    .equation code { display: block; color: var(--cyan); font: 14px "SFMono-Regular", Consolas, monospace; }
+    .equation small { display: block; color: var(--muted); font-size: 9px; line-height: 1.45; margin-top: 4px; }
+    .diagnostics { display: grid; gap: 7px; padding: 11px 13px; }
+    .diag { display: flex; align-items: center; justify-content: space-between; font-size: 10px; }
+    .diag span { color: var(--muted); }
+    .good { color: var(--green); }
+    .warn { color: var(--warm); }
+    .danger { color: var(--danger); }
+    .tool.danger { color: var(--danger); border-color: rgba(255,109,130,.35); }
+    .tool.danger:hover { color: #ffe1e6; border-color: rgba(255,109,130,.75); background: rgba(255,109,130,.16); }
+    .tool.danger:disabled { opacity: .35; cursor: not-allowed; color: var(--muted); border-color: var(--line-bright); background: rgba(10,22,39,.76); }
+    .selected-card { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .selected-card .selected-text { min-width: 0; }
+    .toast { position: fixed; right: 18px; top: 78px; transform: translateY(-12px); opacity: 0; pointer-events: none; padding: 10px 13px; border: 1px solid rgba(101,231,255,.35); border-radius: 9px; background: #0d2032; color: var(--text); font-size: 11px; transition: .22s ease; z-index: 20; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .mobile-only { display: none; }
+    @media (max-width: 1100px) {
+      body { overflow: auto; }
+      .app { height: auto; min-height: 100vh; grid-template-rows: 64px auto auto; }
+      .workspace { grid-template-columns: 220px minmax(360px, 1fr); }
+      .right { grid-column: 1 / -1; min-height: 260px; }
+      .right .scroll { display: grid; grid-template-columns: repeat(3, 1fr); }
+      .right .section { border-right: 1px solid rgba(145,183,223,.1); }
+      .bottom { grid-template-columns: 1fr 1fr; grid-auto-rows: 220px; }
+      .bottom-panel:first-child { grid-column: 1 / -1; }
+      .canvas-panel { min-height: 600px; }
+    }
+    @media (max-width: 730px) {
+      .topbar { padding: 0 12px; }
+      .brand { min-width: 0; }
+      .brand p { display: none; }
+      .mode-select { min-width: 110px; }
+      .workspace { grid-template-columns: 1fr; }
+      .left { min-height: auto; }
+      .left .scroll { display: grid; grid-template-columns: 1fr 1fr; }
+      .canvas-panel { min-height: 560px; grid-row: 1; }
+      .left { grid-row: 2; }
+      .right { grid-row: 3; }
+      .right .scroll, .left .scroll { display: block; }
+      .hud { grid-template-columns: repeat(2, 1fr); max-width: 220px; }
+      .bottom { grid-template-columns: 1fr; grid-auto-rows: 220px; }
+      .bottom-panel:first-child { grid-column: auto; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"></div>
+        <div><h1>Electrostatics Lab</h1><p>Interactive electrostatics laboratory · normalized SI model</p></div>
+      </div>
+      <div class="top-actions">
+        <div id="status" class="status">running</div>
+        <select id="mode" class="mode-select" aria-label="Lab mode">
+          <option value="laboratory">Laboratory mode</option>
+          <option value="jee">JEE mode</option>
+          <option value="advanced">Advanced mode</option>
+        </select>
+      </div>
+    </header>
+
+    <section class="workspace">
+      <aside class="panel left">
+        <div class="panel-title"><span>Experiment bench</span><small>drag into world</small></div>
+        <div class="scroll">
+          <section class="section">
+            <p class="section-label">Object library</p>
+            <div class="library">
+              <button class="library-card" data-add="charge"><div class="object-glyph">＋</div><span>Point charge</span></button>
+              <button class="library-card" data-add="dipole"><div class="object-glyph">＋—−</div><span>Dipole</span></button>
+              <button class="library-card" data-add="ring"><div class="object-glyph">○</div><span>Charged ring</span></button>
+              <button class="library-card" data-add="sphere"><div class="object-glyph">◉</div><span>Charged sphere</span></button>
+              <button class="library-card" data-add="sheet"><div class="object-glyph">▤</div><span>Infinite sheet</span></button>
+               <button class="library-card" data-add="rod"><div class="object-glyph">━</div><span>Charged rod</span></button>
+              <button class="library-card" data-add="probe"><div class="object-glyph">⌖</div><span>Field probe</span></button>
+            </div>
+          </section>
+          <section class="section">
+            <p class="section-label">Presets</p>
+            <div class="experiment-list">
+              <button class="experiment" data-preset="blank"><span>Blank canvas</span><span>∅ start fresh</span></button>
+              <button class="experiment" data-preset="free"><span>Free dipole</span><span>F = 0</span></button>
+              <button class="experiment" data-preset="uniform"><span>Dipole in uniform field</span><span>τ = p × E</span></button>
+              <button class="experiment" data-preset="small"><span>Small oscillation</span><span>linear</span></button>
+              <button class="experiment" data-preset="large"><span>Large oscillation</span><span>nonlinear</span></button>
+              <button class="experiment" data-preset="charge"><span>Near point charge</span><span>∇E ≠ 0</span></button>
+              <button class="experiment" data-preset="two"><span>Two dipoles</span><span>many-body</span></button>
+              <button class="experiment" data-preset="landscape"><span>Potential landscape</span><span>V(x,y)</span></button>
+            </div>
+          </section>
+          <section class="section">
+            <p class="section-label">Rod experiments</p>
+            <div class="experiment-list">
+              <button class="experiment" data-preset="rod-pendulum"><span>Rod pendulum</span><span>hinged · T = 2π√(I/κ)</span></button>
+              <button class="experiment" data-preset="rod-charge"><span>Rod near point charge</span><span>∇E ≠ 0</span></button>
+              <button class="experiment" data-preset="rod-gradient"><span>Non-uniform λ(s)</span><span>Q = 0, p ≠ 0</span></button>
+              <button class="experiment" data-preset="rod-sources"><span>Rod between sources</span><span>sheet + sphere</span></button>
+              <button class="experiment" data-preset="rod-field"><span>Infinite rod field</span><span>E ∝ 1/r</span></button>
+            </div>
+          </section>
+          <section class="section">
+            <p class="section-label">Visualization</p>
+            <div class="toggle-grid">
+              <label class="toggle"><input id="showPotential" type="checkbox" checked /> Potential map</label>
+              <label class="toggle"><input id="showField" type="checkbox" checked /> Field vectors</label>
+              <label class="toggle"><input id="showLines" type="checkbox" checked /> Field lines</label>
+              <label class="toggle"><input id="showEquipotential" type="checkbox" /> Equipotentials</label>
+              <label class="toggle"><input id="showVectors" type="checkbox" checked /> Force vectors</label>
+              <label class="toggle"><input id="showTrajectory" type="checkbox" checked /> Trajectory</label>
+            </div>
+            <div class="control-row"><label>Scale</label><input id="vectorScale" type="range" min=".15" max="2.4" value=".85" step=".05" /><output id="vectorScaleOut">0.85×</output></div>
+          </section>
+          <section class="section">
+            <p class="section-label">External field</p>
+            <div class="control-row"><label>Eₓ</label><input id="ex" type="range" min="-2" max="2" value="0" step=".01" /><output id="exOut">0.00</output></div>
+            <div class="control-row"><label>Eᵧ</label><input id="ey" type="range" min="-2" max="2" value="0" step=".01" /><output id="eyOut">0.00</output></div>
+            <div class="input-pair">
+              <label><span class="mini-label">Ex direct</span><input id="exNum" type="number" step=".01" value="0" /></label>
+              <label><span class="mini-label">Ey direct</span><input id="eyNum" type="number" step=".01" value="0" /></label>
+            </div>
+          </section>
+        </div>
+      </aside>
+
+      <section class="panel canvas-panel">
+        <canvas id="world" aria-label="Interactive electrostatics simulation world"></canvas>
+        <div class="world-toolbar">
+          <button class="action primary" id="play">Pause</button>
+          <button class="action" id="step">Step</button>
+          <button class="action warm" id="throw">Throw</button>
+          <button class="tool" id="reset">Reset view</button>
+          <button class="tool" id="probeTool">Place probe</button>
+          <button class="tool" id="clearObjects">Clear additions</button>
+        </div>
+        <div class="hud">
+          <div class="metric"><label>p = qd</label><strong id="mP">0.80</strong></div>
+          <div class="metric"><label>|E| at R</label><strong id="mE">0.00</strong></div>
+          <div class="metric"><label>|F| net</label><strong id="mF">0.00</strong></div>
+          <div class="metric"><label>|τ|</label><strong id="mT">0.00</strong></div>
+          <div class="metric"><label>speed</label><strong id="mV">0.00</strong></div>
+          <div class="metric"><label>ω</label><strong id="mW">0.00</strong></div>
+          <div class="metric"><label>energy</label><strong id="mEnergy">0.00</strong></div>
+          <div class="metric"><label>t</label><strong id="mTime">0.00 s</strong></div>
+        </div>
+        <div class="canvas-legend">
+          <div class="legend-row"><span class="swatch potential"></span><span>V: negative → neutral → positive</span></div>
+          <div class="legend-row"><span class="swatch field"></span><span>field brightness ∝ |E|</span></div>
+        </div>
+      </section>
+
+      <aside class="panel right">
+        <div class="panel-title"><span>Physics inspector</span><small id="selectionLabel">primary</small></div>
+        <div class="scroll">
+          <section class="section">
+            <div class="selected-card">
+              <div class="selected-text"><h3 id="selectedName">Primary dipole</h3><p id="selectedDesc">finite rigid body · exact endpoint forces</p></div>
+              <button class="tool danger" id="deleteObject" title="Delete selected object">Delete</button>
+            </div>
+          </section>
+           <section class="section" id="object-editor-section">
+             <p class="section-label">Object editor</p>
+             <div id="objectEditor"></div>
+           </section>
+          <section class="section">
+            <p class="section-label">Live state</p>
+            <div class="readout">
+              <span>position R</span><span id="rRead">(+0.00, +0.00)</span>
+              <span>orientation</span><span id="thetaRead">37.2°</span>
+              <span>dipole moment p</span><span id="pRead">(+0.64, +0.52)</span>
+              <span>velocity v</span><span id="vRead">(0.00, 0.00)</span>
+              <span>acceleration a</span><span id="aRead">(0.00, 0.00)</span>
+              <span>force F</span><span id="fRead">(0.00, 0.00)</span>
+              <span>torque τᶻ</span><span id="tauRead">0.00</span>
+               <span>rod period</span><span id="periodRead">—</span>
+               <span>hinge force</span><span id="hingeRead">—</span>
+            </div>
+          </section>
+          <section class="section">
+            <p class="section-label">Vector channels</p>
+            <div class="vector-key">
+              <span><i class="vector-dot e"></i>E field</span><span><i class="vector-dot f"></i>force</span>
+               <span><i class="vector-dot p"></i>moment</span><span><i class="vector-dot v"></i>velocity</span><span><i class="vector-dot h"></i>hinge force</span>
+            </div>
+          </section>
+          <section class="section">
+            <p class="section-label">Sensitivity experiment</p>
+            <div class="button-row">
+              <button class="tool" data-double="q">q × 2</button>
+              <button class="tool" data-double="d">d × 2</button>
+              <button class="tool" data-double="e">E × 2</button>
+              <button class="tool" data-double="i">I × 2</button>
+            </div>
+          </section>
+        </div>
+      </aside>
+    </section>
+
+    <section class="bottom">
+      <section class="panel bottom-panel">
+        <div class="panel-title"><span>Live observables</span><small>sampled from integrator</small></div>
+        <div class="graph-wrap"><canvas id="graph"></canvas><select id="graphSelect" class="select graph-select"><option value="theta">θ(t) angle</option><option value="omega">ω(t) angular velocity</option><option value="x">x(t) position</option><option value="y">y(t) position</option><option value="speed">v(t) speed</option><option value="energy">energy</option></select></div>
+      </section>
+      <section class="panel bottom-panel">
+        <div class="panel-title"><span>Equation lab</span><small>active model</small></div>
+        <div class="scroll">
+          <div class="equation"><code>p = q d</code><small>dipole moment points from −q to +q</small></div>
+          <div class="equation"><code>F = F₊ + F₋</code><small>each charge samples the external field at its actual endpoint</small></div>
+          <div class="equation"><code>τ = r₊ × F₊ + r₋ × F₋</code><small>finite-body torque; no idealization in the integrator</small></div>
+          <div class="equation"><code>I θ̈ = τ − γ θ̇</code><small>semi-implicit Euler with configurable damping</small></div>
+          <div class="equation"><code>V = −E · r + k Σ qᵢ / |r − rᵢ|</code><small>the map uses the same field sources as the force engine</small></div>
+        </div>
+      </section>
+      <section class="panel bottom-panel">
+        <div class="panel-title"><span>Diagnostics</span><small>numerical health</small></div>
+        <div class="diagnostics">
+          <div class="diag"><span>Integrator</span><strong class="good">semi-implicit Euler</strong></div>
+          <div class="diag"><span>Δt</span><strong id="dtDiag">0.0083 s</strong></div>
+          <div class="diag"><span>Energy drift</span><strong id="driftDiag" class="good">0.00%</strong></div>
+          <div class="diag"><span>Field samples</span><strong id="sampleDiag">0</strong></div>
+          <div class="diag"><span>Singularity guard</span><strong class="good">active · softening 0.06</strong></div>
+          <div class="diag"><span>State</span><strong id="stateDiag" class="good">stable</strong></div>
+          <div class="button-row"><button class="tool" id="runValidation">Run physics validation</button></div>
+        </div>
+      </section>
+    </section>
+  </main>
+  <div id="toast" class="toast"></div>
+
+  <script>
+  (() => {
+    "use strict";
+    const TAU = Math.PI * 2, K = 1, SOFT = .06;
+    const $ = id => document.getElementById(id);
+    const world = $("world"), graph = $("graph"), ctx = world.getContext("2d"), gtx = graph.getContext("2d");
+    const state = {
+      running: true, time: 0, dt: 1 / 120, accumulator: 0, lastFrame: performance.now(),
+      zoom: 72, panX: 0, panY: 0, selected: "primary", placement: null, dragging: null, lastSample: 0,
+      showPotential: true, showField: true, showLines: true, showEquipotential: false, showVectors: true, showTrajectory: true,
+      ex: 0, ey: 0, gamma: .04, vectorScale: .85, graph: "theta", fieldSamples: 0, energyInitial: null,
+      dipole: { id: "primary", name: "Primary dipole", x: 0, y: 0, theta: .65, d: 1, q: .8, mass: 1, inertia: .45, vx: 0, vy: 0, omega: 0, ax: 0, ay: 0, alpha: 0, fx: 0, fy: 0, torque: 0, trail: [], deleted: false },
+      objects: [], probes: [],
+      history: { time: [], theta: [], omega: [], x: [], y: [], speed: [], field: [], energy: [], kinetic: [], potential: [] }
+    };
+    const fmt = (n, digits = 2) => Number.isFinite(n) ? n.toFixed(digits) : "—";
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const hypot = Math.hypot;
+    const vec = (x, y) => ({ x, y });
+    const mag = v => hypot(v.x, v.y);
+    const dot = (a, b) => a.x * b.x + a.y * b.y;
+    const cross = (a, b) => a.x * b.y - a.y * b.x;
+    const rotate = (v, a) => ({ x: v.x * Math.cos(a) - v.y * Math.sin(a), y: v.x * Math.sin(a) + v.y * Math.cos(a) });
+    const toast = message => { const t = $("toast"); t.textContent = message; t.classList.add("show"); clearTimeout(toast.timer); toast.timer = setTimeout(() => t.classList.remove("show"), 2200); };
+     /*
+      * Domain object layer
+      * -------------------
+      * These objects intentionally keep the field names used by the original
+      * simulation. That makes the visualizer and controls backwards-compatible
+      * while giving future experiments a stable place to add object behavior.
+      */
+     class ElectricObject {
+       constructor({ id, type, x = 0, y = 0 }) {
+         this.id = id;
+         this.type = type;
+         this.x = x;
+         this.y = y;
+       }
+       sourceCharges() { return []; }
+       fieldContributionAt() { return { x: 0, y: 0 }; }
+       potentialContributionAt() { return 0; }
+     }
+     class PointCharge extends ElectricObject {
+       constructor(config) {
+         super({ ...config, type: "charge" });
+         this.q = config.q;
+         this.mass = config.mass ?? 1;
+         this.vx = config.vx || 0; this.vy = config.vy || 0;
+         this.ax = 0; this.ay = 0; this.fx = 0; this.fy = 0;
+         this.fixed = Boolean(config.fixed);
+       }
+       sourceCharges() { return [{ x: this.x, y: this.y, q: this.q, id: this.id }]; }
+     }
+     class DipoleObject extends ElectricObject {
+       constructor(config) {
+         super({ ...config, type: "dipole" });
+         this.name = config.name;
+         Object.assign(this, {
+           theta: config.theta, d: config.d, q: config.q, mass: config.mass,
+           inertia: config.inertia, vx: config.vx || 0, vy: config.vy || 0,
+           omega: config.omega || 0, ax: config.ax || 0, ay: config.ay || 0,
+           alpha: config.alpha || 0, fx: config.fx || 0, fy: config.fy || 0,
+           torque: config.torque || 0, trail: config.trail || [], deleted: Boolean(config.deleted)
+         });
+       }
+       sourceCharges() {
+         const ep = endpointPositions(this);
+         return [
+           { x: ep.plus.x, y: ep.plus.y, q: this.q, id: this.id },
+           { x: ep.minus.x, y: ep.minus.y, q: -this.q, id: this.id }
+         ];
+       }
+     }
+     class RingObject extends ElectricObject {
+       constructor(config) {
+         super({ ...config, type: "ring" });
+         this.q = config.q; this.radius = config.radius;
+         this.mass = config.mass ?? 1;
+         this.vx = config.vx || 0; this.vy = config.vy || 0;
+         this.ax = 0; this.ay = 0; this.fx = 0; this.fy = 0;
+         this.fixed = Boolean(config.fixed);
+       }
+       fieldContributionAt(x, y) {
+         const dx = x - this.x, dy = y - this.y, r2 = dx * dx + dy * dy + SOFT * SOFT;
+         const f = K * this.q / Math.pow(r2 + this.radius * this.radius, 1.5);
+         return { x: f * dx, y: f * dy };
+       }
+       potentialContributionAt(x, y) {
+         const r = Math.sqrt((x - this.x) ** 2 + (y - this.y) ** 2 + SOFT * SOFT);
+         return K * this.q / Math.sqrt(r * r + this.radius * this.radius);
+       }
+     }
+     class SphereObject extends ElectricObject {
+       constructor(config) {
+         super({ ...config, type: "sphere" });
+         this.q = config.q; this.radius = config.radius;
+         this.mass = config.mass ?? 1;
+         this.vx = config.vx || 0; this.vy = config.vy || 0;
+         this.ax = 0; this.ay = 0; this.fx = 0; this.fy = 0;
+         this.fixed = Boolean(config.fixed);
+         this.material = config.material || "non-conductor";
+         this.inducedDipole = { x: 0, y: 0 };
+       }
+       fieldContributionAt(x, y) {
+         const dx = x - this.x, dy = y - this.y, r2 = dx * dx + dy * dy + SOFT * SOFT, r = Math.sqrt(r2);
+         const outside = r >= this.radius, f = outside ? K * this.q / (r2 * r) : K * this.q / Math.max(this.radius ** 3, .001);
+         let ex = f * dx, ey = f * dy;
+         if (this.material === "conductor" && (this.inducedDipole.x || this.inducedDipole.y)) {
+           const rr = Math.max(r, this.radius, SOFT), rhat = { x: dx / r, y: dy / r }, p = this.inducedDipole;
+           const pDotR = p.x * rhat.x + p.y * rhat.y, kd = K / (rr * rr * rr);
+           ex += kd * (3 * pDotR * rhat.x - p.x); ey += kd * (3 * pDotR * rhat.y - p.y);
+         }
+         return { x: ex, y: ey };
+       }
+       potentialContributionAt(x, y) {
+         const dx = x - this.x, dy = y - this.y, r = Math.sqrt(dx * dx + dy * dy + SOFT * SOFT);
+         let v = K * this.q / Math.max(r, this.radius);
+         if (this.material === "conductor" && (this.inducedDipole.x || this.inducedDipole.y)) {
+           const rr = Math.max(r, this.radius, SOFT), p = this.inducedDipole;
+           v += K * (p.x * dx + p.y * dy) / (rr * rr * rr);
+         }
+         return v;
+       }
+     }
+     class ShellObject extends ElectricObject {
+       constructor(config) { super({ ...config, type: "shell" }); this.q = config.q; this.radius = config.radius; }
+       fieldContributionAt(x, y) {
+         const dx = x - this.x, dy = y - this.y, r2 = dx * dx + dy * dy + SOFT * SOFT, r = Math.sqrt(r2);
+         if (r < this.radius) return { x: 0, y: 0 };
+         const f = K * this.q / (r2 * r);
+         return { x: f * dx, y: f * dy };
+       }
+       potentialContributionAt(x, y) {
+         const r = Math.sqrt((x - this.x) ** 2 + (y - this.y) ** 2 + SOFT * SOFT);
+         return K * this.q / Math.max(r, this.radius);
+       }
+     }
+     class InfiniteSheetObject extends ElectricObject {
+       constructor(config) { super({ ...config, type: "sheet" }); this.q = config.q; }
+       fieldContributionAt(x) { return { x: (x - this.x) >= 0 ? this.q * .5 : -this.q * .5, y: 0 }; }
+       potentialContributionAt(x) { return -this.q * Math.abs(x - this.x); }
+     }
+      class ChargedRod extends ElectricObject {
+        constructor(config) {
+          super({ ...config, type: "rod" });
+          Object.assign(this, {
+            variant: config.variant || "finite",
+            length: config.length ?? 3,
+            lambda0: config.lambda0 ?? .55,
+            densityProfile: config.densityProfile || "uniform",
+            densityK: config.densityK ?? 0,
+            customExpr: config.customExpr || "lambda0",
+            samples: config.samples || 72,
+            exactMode: config.exactMode ?? true,
+            mass: config.mass ?? 1,
+            inertia: config.inertia ?? .8,
+            theta: config.theta ?? .2,
+            vx: config.vx || 0,
+            vy: config.vy || 0,
+            omega: config.omega || 0,
+            ax: 0, ay: 0, alpha: 0, fx: 0, fy: 0, torque: 0,
+            fixed: Boolean(config.fixed),
+            angleLocked: Boolean(config.angleLocked),
+            pivotOffset: config.pivotOffset ?? 0,
+            pivotX: config.pivotX,
+            pivotY: config.pivotY,
+            hingeForce: { x: 0, y: 0 },
+            densityError: ""
+          });
+          if (!Number.isFinite(this.pivotX)) this.pivotX = this.x + Math.cos(this.theta) * this.pivotOffset;
+          if (!Number.isFinite(this.pivotY)) this.pivotY = this.y + Math.sin(this.theta) * this.pivotOffset;
+          this.invalidateCache();
+        }
+        invalidateCache() { this._elementCache = null; this._elementCacheKey = ""; }
+        axis() { return { x: Math.cos(this.theta), y: Math.sin(this.theta) }; }
+        effectiveLength() { return this.variant === "finite" ? Math.max(.2, this.length) : 400; }
+        range() {
+          const length = this.effectiveLength();
+          if (this.variant === "semi-infinite") return { min: 0, max: length };
+          return { min: -length / 2, max: length / 2 };
+        }
+        pointAt(s) {
+          const u = this.axis();
+          return { x: this.x + u.x * s, y: this.y + u.y * s };
+        }
+        densityAt(s) {
+          const L = this.effectiveLength(), profile = this.densityProfile;
+          if (this.variant !== "finite" && profile !== "uniform") {
+            this.densityError = "Non-uniform density is available only for finite rods";
+            return this.lambda0;
+          }
+          let value = this.lambda0;
+          if (profile === "linear") value = this.lambda0 + this.densityK * s;
+          if (profile === "quadratic") value = this.lambda0 + this.densityK * s * s;
+          if (profile === "sinusoidal") value = this.lambda0 * Math.sin((Math.PI * 2 * s) / L);
+          if (profile === "custom") {
+            try {
+              const result = Function("s", "L", "lambda0", "k", `"use strict"; return (${this.customExpr});`)(s, L, this.lambda0, this.densityK);
+              if (!Number.isFinite(Number(result))) throw new Error("density is not finite");
+              value = Number(result);
+              this.densityError = "";
+            } catch {
+              this.densityError = "Custom density must return a finite number";
+              return 0;
+            }
+          }
+          return Number.isFinite(value) ? value : 0;
+        }
+        logSideElements(sign, span, count) {
+          const minScale = .04, ratio = Math.log1p(span / minScale), items = [];
+          for (let i = 0; i < count; i++) {
+            const a = span * (Math.expm1((i / count) * ratio) / Math.expm1(ratio));
+            const b = span * (Math.expm1(((i + 1) / count) * ratio) / Math.expm1(ratio));
+            const ds = b - a, s = sign * (a + b) / 2;
+            items.push({ s, ds });
+          }
+          return items;
+        }
+        elementData() {
+          const key = [this.variant, this.length, this.samples, this.lambda0, this.densityProfile, this.densityK, this.customExpr, this.theta, this.x, this.y].join("|");
+          if (key === this._elementCacheKey && this._elementCache) return this._elementCache;
+          const count = Math.max(20, Math.min(140, Math.round(this.samples)));
+          const { min, max } = this.range(), entries = [];
+          if (this.variant === "finite") {
+            const ds = (max - min) / count;
+            for (let i = 0; i < count; i++) entries.push({ s: min + (i + .5) * ds, ds });
+          } else if (this.variant === "semi-infinite") {
+            entries.push(...this.logSideElements(1, max, count));
+          } else {
+            const side = this.logSideElements(1, max, Math.floor(count / 2));
+            entries.push(...this.logSideElements(-1, max, Math.floor(count / 2)), ...side);
+          }
+          const data = entries.map(({ s, ds }) => {
+            const p = this.pointAt(s);
+            return { ...p, s, ds, dq: this.densityAt(s) * ds };
+          });
+          this._elementCacheKey = key; this._elementCache = data;
+          return data;
+        }
+        sourceCharges() {
+          if (this.exactMode && this.variant === "finite" && this.densityProfile === "uniform") return [];
+          return this.elementData().map(element => ({ x: element.x, y: element.y, q: element.dq, id: this.id }));
+        }
+        exactFieldAt(x, y) {
+          const u = this.axis(), n = { x: -u.y, y: u.x }, rel = { x: x - this.x, y: y - this.y };
+          const along = rel.x * u.x + rel.y * u.y, perpendicular = rel.x * n.x + rel.y * n.y;
+          const { min: a, max: b } = this.range(), y2 = perpendicular * perpendicular + SOFT * SOFT;
+          const ra = Math.sqrt((along - a) ** 2 + y2), rb = Math.sqrt((along - b) ** 2 + y2);
+          const parallel = K * this.lambda0 * (1 / rb - 1 / ra);
+          const normal = K * this.lambda0 * perpendicular / y2 * ((along - a) / ra - (along - b) / rb);
+          return { x: u.x * parallel + n.x * normal, y: u.y * parallel + n.y * normal };
+        }
+        exactPotentialAt(x, y) {
+          const u = this.axis(), rel = { x: x - this.x, y: y - this.y }, along = rel.x * u.x + rel.y * u.y;
+          const perpendicular = Math.sqrt((rel.x * -u.y + rel.y * u.x) ** 2 + SOFT * SOFT);
+          const { min: a, max: b } = this.range();
+          return K * this.lambda0 * (Math.asinh((b - along) / perpendicular) - Math.asinh((a - along) / perpendicular));
+        }
+        fieldContributionAt(x, y) {
+          return this.exactMode && this.variant === "finite" && this.densityProfile === "uniform" ? this.exactFieldAt(x, y) : { x: 0, y: 0 };
+        }
+        potentialContributionAt(x, y) {
+          return this.exactMode && this.variant === "finite" && this.densityProfile === "uniform" ? this.exactPotentialAt(x, y) : 0;
+        }
+        centerOfMass() {
+          const elements = this.elementData(), total = elements.reduce((sum, element) => sum + element.ds, 0);
+          if (!total) return { x: this.x, y: this.y };
+          return elements.reduce((sum, element) => ({ x: sum.x + element.x * element.ds / total, y: sum.y + element.y * element.ds / total }), { x: 0, y: 0 });
+        }
+        pivotPosition() {
+          return this.fixed ? { x: this.pivotX, y: this.pivotY } : this.pointAt(this.pivotOffset);
+        }
+        inertiaAbout(pivot) {
+          const elements = this.elementData(), totalLength = Math.max(this.effectiveLength(), .001);
+          return Math.max(.001, elements.reduce((sum, element) => sum + this.mass * element.ds / totalLength * ((element.x - pivot.x) ** 2 + (element.y - pivot.y) ** 2), 0));
+        }
+        fixAtCurrentPivot() {
+          const pivot = this.pivotPosition();
+          this.pivotX = pivot.x; this.pivotY = pivot.y; this.fixed = true;
+        }
+        releasePivot() { this.fixed = false; this.angleLocked = false; }
+        moveWithPivot() {
+          if (!this.fixed) return;
+          const u = this.axis();
+          this.x = this.pivotX - u.x * this.pivotOffset;
+          this.y = this.pivotY - u.y * this.pivotOffset;
+          this.invalidateCache();
+        }
+      }
+     class FieldProbe {
+       constructor({ x, y }) { this.x = x; this.y = y; }
+     }
+     const objectTypes = {
+       charge: PointCharge,
+       dipole: DipoleObject,
+       ring: RingObject,
+       sphere: SphereObject,
+       shell: ShellObject,
+        sheet: InfiniteSheetObject,
+        rod: ChargedRod
+     };
+     const createObject = (type, config) => new objectTypes[type](config);
+     class ElectricWorld {
+       constructor(simulationState) { this.state = simulationState; }
+       allSourceCharges(excludeId = null) {
+         const sources = [];
+         for (const object of this.state.objects) sources.push(...object.sourceCharges());
+         if (!this.state.dipole.deleted) sources.push(...this.state.dipole.sourceCharges());
+         return sources.filter(source => source.id !== excludeId);
+       }
+       fieldAt(x, y, excludeId = null) {
+         let ex = this.state.ex, ey = this.state.ey;
+         for (const source of this.allSourceCharges(excludeId)) {
+           const dx = x - source.x, dy = y - source.y, r2 = dx * dx + dy * dy + SOFT * SOFT, inv = 1 / Math.sqrt(r2);
+           const f = K * source.q * inv * inv * inv;
+           ex += f * dx; ey += f * dy;
+         }
+         for (const object of this.state.objects) {
+           if (object.id === excludeId) continue;
+           const contribution = object.fieldContributionAt(x, y);
+           ex += contribution.x; ey += contribution.y;
+         }
+         return { x: ex, y: ey };
+       }
+       potentialAt(x, y, excludeId = null) {
+         let value = -(this.state.ex * x + this.state.ey * y);
+         for (const source of this.allSourceCharges(excludeId)) {
+           const r = Math.sqrt((x - source.x) ** 2 + (y - source.y) ** 2 + SOFT * SOFT);
+           value += K * source.q / r;
+         }
+         for (const object of this.state.objects) {
+           if (object.id === excludeId) continue;
+           value += object.potentialContributionAt(x, y);
+         }
+         return value;
+       }
+       calculateDipole(d, excludeId = d.id) {
+         const ep = endpointPositions(d);
+         const ePlus = this.fieldAt(ep.plus.x, ep.plus.y, excludeId);
+         const eMinus = this.fieldAt(ep.minus.x, ep.minus.y, excludeId);
+         const fPlus = { x: d.q * ePlus.x, y: d.q * ePlus.y };
+         const fMinus = { x: -d.q * eMinus.x, y: -d.q * eMinus.y };
+         const force = { x: fPlus.x + fMinus.x, y: fPlus.y + fMinus.y };
+         const rPlus = { x: ep.plus.x - d.x, y: ep.plus.y - d.y };
+         const rMinus = { x: ep.minus.x - d.x, y: ep.minus.y - d.y };
+         const torque = cross(rPlus, fPlus) + cross(rMinus, fMinus);
+         const centerE = this.fieldAt(d.x, d.y, excludeId);
+         const potential = d.q * this.potentialAt(ep.plus.x, ep.plus.y, excludeId) - d.q * this.potentialAt(ep.minus.x, ep.minus.y, excludeId);
+         return { ep, ePlus, eMinus, fPlus, fMinus, force, torque, centerE, potential };
+       }
+        calculateRod(rod, excludeId = rod.id) {
+          const elements = rod.elementData(), pivot = rod.fixed ? rod.pivotPosition() : rod.centerOfMass();
+          let force = { x: 0, y: 0 }, torque = 0, potential = 0;
+          for (const element of elements) {
+            const localField = this.fieldAt(element.x, element.y, excludeId);
+            const elementForce = { x: element.dq * localField.x, y: element.dq * localField.y };
+            force.x += elementForce.x; force.y += elementForce.y;
+            torque += cross({ x: element.x - pivot.x, y: element.y - pivot.y }, elementForce);
+            potential += element.dq * this.potentialAt(element.x, element.y, excludeId);
+          }
+          const center = rod.centerOfMass(), centerE = this.fieldAt(center.x, center.y, excludeId);
+          return { elements, center, pivot, force, torque, centerE, potential, inertia: rod.inertiaAbout(pivot) };
+        }
+       energy() {
+         const d = this.state.dipole, result = this.calculateDipole(d);
+         const kinetic = .5 * d.mass * (d.vx * d.vx + d.vy * d.vy) + .5 * d.inertia * d.omega * d.omega;
+         return { kinetic, potential: result.potential, total: kinetic + result.potential };
+       }
+     }
+     state.dipole = new DipoleObject(state.dipole);
+     const simulationWorld = new ElectricWorld(state);
+      const objectSchemas = {
+        dipole: {
+          label: "Dipole", description: "finite rigid body · exact endpoint forces",
+          fields: [
+            { key: "q", label: "q", type: "range-number", min: .1, max: 2.4, step: .01 },
+            { key: "d", label: "d", type: "range-number", min: .25, max: 2.5, step: .01 },
+            { key: "mass", label: "M", type: "range-number", min: .2, max: 5, step: .05 },
+            { key: "inertia", label: "I", type: "range-number", min: .05, max: 5, step: .01 },
+            { key: "theta", label: "θ", type: "range-number", min: -Math.PI, max: Math.PI, step: .01, angle: true },
+            { key: "vx", label: "vₓ₀", type: "number", step: .01 },
+            { key: "vy", label: "vᵧ₀", type: "number", step: .01 },
+            { key: "omega", label: "ω₀", type: "number", step: .01 },
+            { key: "gamma", label: "γ damping", type: "number", min: 0, step: .01, stateField: true }
+          ]
+        },
+        charge: {
+          label: "Point charge", description: "softened Coulomb source",
+          fields: [
+            { key: "q", label: "q", type: "range-number", min: -3, max: 3, step: .05 },
+            { key: "mass", label: "Mass", type: "range-number", min: .1, max: 5, step: .1 },
+            { key: "fixed", label: "Fixed", type: "toggle" },
+            { key: "vx", label: "vₓ₀", type: "number", step: .01, showIf: o => !o.fixed },
+            { key: "vy", label: "vᵧ₀", type: "number", step: .01, showIf: o => !o.fixed }
+          ]
+        },
+        ring: {
+          label: "Charged ring", description: "axisymmetric extended source",
+          fields: [
+            { key: "q", label: "Q", type: "range-number", min: -3, max: 3, step: .05 },
+            { key: "radius", label: "radius", type: "range-number", min: .1, max: 3, step: .05 },
+            { key: "mass", label: "Mass", type: "range-number", min: .1, max: 5, step: .1 },
+            { key: "fixed", label: "Fixed", type: "toggle" },
+            { key: "vx", label: "vₓ₀", type: "number", step: .01, showIf: o => !o.fixed },
+            { key: "vy", label: "vᵧ₀", type: "number", step: .01, showIf: o => !o.fixed }
+          ]
+        },
+        sphere: {
+          label: "Charged sphere", description: "uniform spherical source approximation",
+          fields: [
+            { key: "q", label: "Q", type: "range-number", min: -3, max: 3, step: .05 },
+            { key: "radius", label: "radius", type: "range-number", min: .1, max: 3, step: .05 },
+            { key: "material", label: "Material", type: "select", options: ["non-conductor", "conductor"] },
+            { key: "mass", label: "Mass", type: "range-number", min: .1, max: 5, step: .1 },
+            { key: "fixed", label: "Fixed", type: "toggle" },
+            { key: "vx", label: "vₓ₀", type: "number", step: .01, showIf: o => !o.fixed },
+            { key: "vy", label: "vᵧ₀", type: "number", step: .01, showIf: o => !o.fixed }
+          ]
+        },
+        shell: {
+          label: "Charged shell", description: "spherical shell source",
+          fields: [
+            { key: "q", label: "Q", type: "range-number", min: -3, max: 3, step: .05 },
+            { key: "radius", label: "radius", type: "range-number", min: .1, max: 3, step: .05 }
+          ]
+        },
+        sheet: {
+          label: "Infinite sheet", description: "uniform planar field source",
+          fields: [{ key: "q", label: "σ", type: "range-number", min: -2, max: 2, step: .05 }]
+        },
+        rod: {
+          label: "Charged rod", description: "discretized linear charge distribution",
+          fields: [
+            { key: "variant", label: "Type", type: "select", options: ["finite", "semi-infinite", "infinite"] },
+            { key: "length", label: "Length", type: "range-number", min: .2, max: 8, step: .1, showIf: o => o.variant === "finite" },
+            { key: "densityProfile", label: "Charge density", type: "select", options: ["uniform", "linear", "quadratic", "sinusoidal", "custom"] },
+            { key: "lambda0", label: "λ₀", type: "range-number", min: -3, max: 3, step: .05 },
+            { key: "densityK", label: "k", type: "range-number", min: -3, max: 3, step: .05, showIf: o => o.densityProfile !== "uniform" },
+            { key: "customExpr", label: "λ(s) expression", type: "text", showIf: o => o.densityProfile === "custom" },
+            { key: "samples", label: "Samples", type: "slider", min: 20, max: 140, step: 4 },
+            { key: "mass", label: "Mass", type: "range-number", min: .1, max: 5, step: .1 },
+            { key: "inertia", label: "I", type: "range-number", min: .05, max: 10, step: .05 },
+            { key: "theta", label: "θ", type: "range-number", min: -Math.PI, max: Math.PI, step: .01, angle: true },
+            { key: "fixed", label: "Fixed (hinged)", type: "toggle" },
+            { key: "pivotOffset", label: "Pivot position", type: "slider", min: -1, max: 1, step: .05, showIf: o => o.fixed },
+            { key: "angleLocked", label: "Second hinge (locks angle)", type: "toggle", showIf: o => o.fixed },
+            { key: "exactMode", label: "Exact finite uniform mode", type: "toggle", showIf: o => o.variant === "finite" && o.densityProfile === "uniform" },
+            { key: "vx", label: "vₓ₀", type: "number", step: .01, showIf: o => !o.fixed },
+            { key: "vy", label: "vᵧ₀", type: "number", step: .01, showIf: o => !o.fixed },
+            { key: "omega", label: "ω₀", type: "number", step: .01 }
+          ]
+        }
+      };
+      function selectedObject() {
+        if (state.selected === "primary") return state.dipole.deleted ? null : state.dipole;
+        if (!state.selected) return null;
+        return state.objects.find(object => object.id === state.selected) || null;
+      }
+      function objectSchema(object) { return objectSchemas[object?.type] || objectSchemas.dipole; }
+      function editorValue(object, field) { return field.stateField ? state[field.key] : object[field.key]; }
+      function editorDisplay(value, field) {
+        if (field.angle) return `${fmt(Number(value) * 180 / Math.PI, 1)}°`;
+        return fmt(Number(value), field.step && field.step < .1 ? 2 : 2);
+      }
+      function editorFieldMarkup(object, field) {
+        if (field.showIf && !field.showIf(object)) return "";
+        const value = editorValue(object, field), id = field.key, common = `data-editor-field="${id}"`;
+        if (field.type === "select") return `<label class="control-row"><span>${field.label}</span><select id="${id}" ${common} class="select">${field.options.map(option => `<option value="${option}" ${option === value ? "selected" : ""}>${option}</option>`).join("")}</select><output></output></label>`;
+        if (field.type === "toggle") return `<label class="toggle"><input id="${id}" ${common} type="checkbox" ${value ? "checked" : ""} /> ${field.label}</label>`;
+        if (field.type === "text") return `<label class="control-row"><span>${field.label}</span><input id="${id}" ${common} type="text" value="${String(value ?? "").replace(/"/g, "&quot;")}" /><output></output></label>`;
+        if (field.type === "number") return `<label class="number-field"><span class="mini-label">${field.label}</span><input id="${id}" ${common} type="number" ${field.min !== undefined ? `min="${field.min}"` : ""} ${field.max !== undefined ? `max="${field.max}"` : ""} step="${field.step || ".01"}" value="${value ?? 0}" /></label>`;
+        const output = editorDisplay(value, field);
+        return `<div class="control-row"><label>${field.label}</label><input id="${id}" ${common} type="range" min="${field.min}" max="${field.max}" step="${field.step}" value="${value ?? 0}" /><output id="${id}Out">${output}</output><input id="${id}Num" data-editor-number="${id}" type="number" min="${field.min}" max="${field.max}" step="${field.step}" value="${value ?? 0}" /></div>`;
+      }
+      function renderEditor(object = selectedObject()) {
+        const deleteButton = $("deleteObject");
+        if (!object) {
+          $("selectionLabel").textContent = "none";
+          $("selectedName").textContent = "Nothing selected";
+          $("selectedDesc").textContent = "Add an object from the library, or click one in the world.";
+          if (deleteButton) { deleteButton.disabled = true; deleteButton.title = "Nothing selected"; }
+          $("objectEditor").innerHTML = "";
+          return;
+        }
+        const schema = objectSchema(object);
+        $("selectionLabel").textContent = object.id === "primary" ? "primary" : object.id;
+        $("selectedName").textContent = object.name || schema.label;
+        $("selectedDesc").textContent = object.id === "primary" ? "finite rigid body · exact endpoint forces" : schema.description;
+        if (deleteButton) { deleteButton.disabled = false; deleteButton.title = "Delete selected object"; }
+        $("objectEditor").innerHTML = schema.fields.map(field => editorFieldMarkup(object, field)).join("");
+        $("objectEditor").querySelectorAll("[data-editor-field]").forEach(input => {
+          const eventName = input.type === "range" || input.type === "text" ? "input" : "change";
+          input.addEventListener(eventName, () => {
+            const key = input.dataset.editorField, field = schema.fields.find(item => item.key === key);
+            let value = input.type === "checkbox" ? input.checked : input.value;
+            if (field.type !== "select" && field.type !== "text" && input.type !== "checkbox") value = Number(value);
+            if (field.stateField) state[key] = field.min !== undefined ? Math.max(field.min, Number(value) || 0) : Number(value) || 0;
+            else if (key === "fixed" && object.type === "rod") value ? object.fixAtCurrentPivot() : object.releasePivot();
+            else object[key] = value;
+            if (object.type === "rod" && object.fixed && ["theta", "pivotOffset"].includes(key)) object.moveWithPivot();
+            if (object.invalidateCache) object.invalidateCache();
+            const numberInput = $(`${key}Num`);
+            if (numberInput && input.type === "range") numberInput.value = value;
+            const output = $(`${key}Out`);
+            if (output && input.type === "range") output.textContent = editorDisplay(value, field);
+            if (object.type === "rod" && ["variant", "densityProfile", "fixed"].includes(key)) renderEditor(object);
+          });
+        });
+        if (object.type === "rod" && object.variant !== "finite" && object.densityProfile !== "uniform") {
+          $("objectEditor").insertAdjacentHTML("beforeend", `<small class="warn">Non-uniform density profiles are restricted to finite rods; use uniform λ for this variant.</small>`);
+        }
+        $("objectEditor").querySelectorAll("[data-editor-number]").forEach(input => {
+          input.addEventListener("change", () => {
+            const key = input.dataset.editorNumber, field = schema.fields.find(item => item.key === key), range = $(key);
+            const value = clamp(Number(input.value) || 0, Number(field.min), Number(field.max));
+            if (field.stateField) state[key] = value; else object[key] = value;
+            if (object.type === "rod" && object.fixed && key === "pivotOffset") object.moveWithPivot();
+            if (object.invalidateCache) object.invalidateCache();
+            if (range) range.value = value;
+            const output = $(`${key}Out`); if (output) output.textContent = editorDisplay(value, field);
+          });
+        });
+      }
+    function worldToScreen(x, y) { const r = world.getBoundingClientRect(); return { x: r.width / 2 + (x + state.panX) * state.zoom, y: r.height / 2 - (y + state.panY) * state.zoom }; }
+    function screenToWorld(x, y) { const r = world.getBoundingClientRect(); return { x: (x - r.width / 2) / state.zoom - state.panX, y: -(y - r.height / 2) / state.zoom - state.panY }; }
+    function endpointPositions(d = state.dipole) { const u = { x: Math.cos(d.theta), y: Math.sin(d.theta) }; return { plus: { x: d.x + u.x * d.d / 2, y: d.y + u.y * d.d / 2 }, minus: { x: d.x - u.x * d.d / 2, y: d.y - u.y * d.d / 2 } }; }
+     function allSourceCharges(excludeId = null) { return simulationWorld.allSourceCharges(excludeId); }
+     function fieldAt(x, y, excludeId = null) { return simulationWorld.fieldAt(x, y, excludeId); }
+     function potentialAt(x, y, excludeId = null) { return simulationWorld.potentialAt(x, y, excludeId); }
+     function calculateDipole(d, excludeId = d.id) { return simulationWorld.calculateDipole(d, excludeId); }
+     function calculateRod(rod, excludeId = rod.id) { return simulationWorld.calculateRod(rod, excludeId); }
+     function energy() { return simulationWorld.energy(); }
+    function integrate(dt) {
+      const d = state.dipole;
+      if (!d.deleted) {
+        const result = calculateDipole(d);
+        d.fx = result.force.x; d.fy = result.force.y; d.torque = result.torque - state.gamma * d.omega;
+        d.ax = clamp(d.fx / d.mass, -40, 40); d.ay = clamp(d.fy / d.mass, -40, 40); d.alpha = clamp(d.torque / d.inertia, -80, 80);
+        d.vx += d.ax * dt; d.vy += d.ay * dt; d.omega += d.alpha * dt;
+        d.x += d.vx * dt; d.y += d.vy * dt; d.theta += d.omega * dt;
+        if (d.theta > Math.PI) d.theta -= TAU; if (d.theta < -Math.PI) d.theta += TAU;
+      }
+      for (const o of state.objects.filter(o => o.type === "dipole")) {
+        const r = calculateDipole(o, o.id);
+        o.fx = r.force.x; o.fy = r.force.y; o.torque = r.torque;
+        o.vx += clamp(o.fx / o.mass, -30, 30) * dt; o.vy += clamp(o.fy / o.mass, -30, 30) * dt; o.omega += clamp(o.torque / o.inertia, -60, 60) * dt;
+        o.x += o.vx * dt; o.y += o.vy * dt; o.theta += o.omega * dt;
+      }
+       for (const o of state.objects.filter(o => ["charge", "ring", "sphere"].includes(o.type))) {
+         if (o.fixed) { o.vx = 0; o.vy = 0; o.ax = 0; o.ay = 0; o.fx = 0; o.fy = 0; continue; }
+         const e = fieldAt(o.x, o.y, o.id);
+         o.fx = o.q * e.x; o.fy = o.q * e.y;
+         o.ax = clamp(o.fx / Math.max(o.mass, .001), -40, 40); o.ay = clamp(o.fy / Math.max(o.mass, .001), -40, 40);
+         o.vx += o.ax * dt; o.vy += o.ay * dt;
+         o.x += o.vx * dt; o.y += o.vy * dt;
+       }
+       for (const rod of state.objects.filter(o => o.type === "rod")) {
+         const result = calculateRod(rod), damping = state.gamma * rod.omega;
+         rod.fx = result.force.x; rod.fy = result.force.y; rod.torque = result.torque - damping;
+         if (rod.fixed && rod.angleLocked) {
+           rod.alpha = 0; rod.omega = 0; rod.ax = 0; rod.ay = 0;
+           rod.hingeForce = { x: -rod.fx, y: -rod.fy };
+           rod.moveWithPivot();
+         } else {
+           rod.alpha = clamp(rod.torque / result.inertia, -80, 80);
+           rod.omega += rod.alpha * dt; rod.theta += rod.omega * dt;
+           if (rod.theta > Math.PI) rod.theta -= TAU; if (rod.theta < -Math.PI) rod.theta += TAU;
+           if (rod.fixed) {
+             const center = rod.centerOfMass(), pivot = rod.pivotPosition(), r = { x: center.x - pivot.x, y: center.y - pivot.y };
+             const acceleration = { x: rod.alpha * -r.y - rod.omega * rod.omega * r.x, y: rod.alpha * r.x - rod.omega * rod.omega * r.y };
+             rod.ax = acceleration.x; rod.ay = acceleration.y;
+             rod.hingeForce = { x: rod.mass * acceleration.x - rod.fx, y: rod.mass * acceleration.y - rod.fy };
+             rod.moveWithPivot();
+           } else {
+             rod.ax = clamp(rod.fx / Math.max(rod.mass, .001), -40, 40);
+             rod.ay = clamp(rod.fy / Math.max(rod.mass, .001), -40, 40);
+             rod.vx += rod.ax * dt; rod.vy += rod.ay * dt;
+             rod.x += rod.vx * dt; rod.y += rod.vy * dt;
+           }
+         }
+       }
+      state.time += dt;
+      if (state.time - state.lastSample > .045) sampleHistory();
+    }
+    function updateInducedDipoles() {
+      for (const o of state.objects) {
+        if (o.type !== "sphere") continue;
+        if (o.material === "conductor") {
+          const e = fieldAt(o.x, o.y, o.id), alpha = Math.pow(o.radius, 3);
+          o.inducedDipole = { x: alpha * e.x, y: alpha * e.y };
+        } else {
+          o.inducedDipole = { x: 0, y: 0 };
+        }
+      }
+    }
+    function sampleHistory() {
+      const d = state.dipole, e = energy(), field = mag(calculateDipole(d).centerE);
+      state.lastSample = state.time;
+      const h = state.history;
+      [["time", state.time], ["theta", d.theta], ["omega", d.omega], ["x", d.x], ["y", d.y], ["speed", hypot(d.vx, d.vy)], ["field", field], ["energy", e.total], ["kinetic", e.kinetic], ["potential", e.potential]].forEach(([key, value]) => { h[key].push(value); if (h[key].length > 420) h[key].shift(); });
+      if (state.energyInitial === null) state.energyInitial = e.total;
+      $("driftDiag").textContent = state.energyInitial ? fmt(Math.abs((e.total - state.energyInitial) / Math.max(1e-6, Math.abs(state.energyInitial)) * 100), 2) + "%" : "0.00%";
+    }
+    function resizeCanvas() {
+      const r = world.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1);
+      world.width = Math.floor(r.width * dpr); world.height = Math.floor(r.height * dpr); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const gr = graph.getBoundingClientRect(); graph.width = Math.floor(gr.width * dpr); graph.height = Math.floor(gr.height * dpr); gtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    function clearCanvas() { const r = world.getBoundingClientRect(); ctx.clearRect(0, 0, r.width, r.height); }
+    function potentialColor(v, max) {
+      const n = clamp(v / Math.max(max, .001), -1, 1), a = Math.abs(n);
+      if (n < 0) return `rgb(${Math.round(22 + 36 * a)},${Math.round(46 + 92 * (1-a))},${Math.round(96 + 138 * a)})`;
+      return `rgb(${Math.round(36 + 200 * a)},${Math.round(65 + 98 * (1-a))},${Math.round(95 - 49 * a)})`;
+    }
+    function drawPotential() {
+      if (!state.showPotential) return;
+      const r = world.getBoundingClientRect(), cols = Math.max(22, Math.floor(r.width / 25)), rows = Math.max(15, Math.floor(r.height / 25)), cw = r.width / cols, ch = r.height / rows, values = [];
+      let max = 0;
+      for (let yy = 0; yy <= rows; yy++) for (let xx = 0; xx <= cols; xx++) { const p = screenToWorld(xx * cw, yy * ch), v = potentialAt(p.x, p.y); values.push(v); max = Math.max(max, Math.abs(v)); }
+      for (let yy = 0; yy < rows; yy++) for (let xx = 0; xx < cols; xx++) { const v = (values[yy * (cols + 1) + xx] + values[yy * (cols + 1) + xx + 1] + values[(yy+1) * (cols+1) + xx]) / 3; ctx.fillStyle = potentialColor(v, max * .82); ctx.globalAlpha = .22; ctx.fillRect(xx*cw, yy*ch, cw+1, ch+1); }
+      ctx.globalAlpha = 1; state.fieldSamples = cols * rows;
+    }
+    function drawGrid() {
+      const r = world.getBoundingClientRect(); ctx.save(); ctx.lineWidth = 1;
+      const step = state.zoom >= 55 ? 1 : state.zoom >= 28 ? 2 : 5;
+      for (let x = -20; x <= 20; x += step) { const a = worldToScreen(x, -20), b = worldToScreen(x, 20); ctx.strokeStyle = x === 0 ? "rgba(130,180,220,.27)" : "rgba(130,180,220,.08)"; ctx.beginPath(); ctx.moveTo(a.x, 0); ctx.lineTo(b.x, r.height); ctx.stroke(); }
+      for (let y = -20; y <= 20; y += step) { const a = worldToScreen(-20, y), b = worldToScreen(20, y); ctx.strokeStyle = y === 0 ? "rgba(130,180,220,.27)" : "rgba(130,180,220,.08)"; ctx.beginPath(); ctx.moveTo(0, a.y); ctx.lineTo(r.width, a.y); ctx.stroke(); }
+      const origin = worldToScreen(0,0); ctx.fillStyle = "rgba(184,217,244,.55)"; ctx.font = "10px ui-monospace, monospace"; ctx.fillText("0", origin.x + 5, origin.y - 5); ctx.restore();
+    }
+    function arrow(a, b, color, width = 1.5, alpha = 1) {
+      const dx = b.x-a.x, dy = b.y-a.y, len = hypot(dx,dy); if (len < 2) return;
+      const h = Math.min(8, Math.max(4, len * .18)); const ux = dx/len, uy = dy/len;
+      ctx.save(); ctx.globalAlpha = alpha; ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = width; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(b.x,b.y); ctx.lineTo(b.x-ux*h-uy*h*.55,b.y-uy*h+ux*h*.55); ctx.lineTo(b.x-ux*h+uy*h*.55,b.y-uy*h-ux*h*.55); ctx.closePath(); ctx.fill(); ctx.restore();
+    }
+    function drawFieldVectors() {
+      if (!state.showField) return;
+      const r = world.getBoundingClientRect(), step = Math.max(30, Math.min(60, state.zoom * .68));
+      for (let sx = step/2; sx < r.width; sx += step) for (let sy = step/2; sy < r.height; sy += step) {
+        const p = screenToWorld(sx,sy), e = fieldAt(p.x,p.y), m = mag(e), n = m ? {x:e.x/m,y:e.y/m} : {x:0,y:0}, len = clamp(5 + Math.log1p(m)*4, 5, 18);
+        arrow({x:sx-n.x*len/2,y:sy+n.y*len/2},{x:sx+n.x*len/2,y:sy-n.y*len/2},"#68d9ed",1,.15+clamp(m*.09,0,.5));
+      }
+    }
+    function drawFieldLines() {
+      if (!state.showLines) return;
+      const seeds = [], d = state.dipole, ep = endpointPositions();
+      if (!d.deleted) for (let i=0;i<14;i++) { const a = i/14*TAU; seeds.push({x:ep.plus.x+Math.cos(a)*.16,y:ep.plus.y+Math.sin(a)*.16}); seeds.push({x:ep.minus.x+Math.cos(a)*.16,y:ep.minus.y+Math.sin(a)*.16}); }
+      for (const o of state.objects.filter(o => o.type === "charge")) for (let i=0;i<8;i++) { const a=i/8*TAU; seeds.push({x:o.x+Math.cos(a)*.15,y:o.y+Math.sin(a)*.15}); }
+      for (const o of state.objects.filter(o => o.type === "ring")) for (let i=0;i<12;i++) { const a=i/12*TAU; seeds.push({x:o.x+Math.cos(a)*(o.radius+.08),y:o.y+Math.sin(a)*(o.radius+.08)}); }
+      for (const o of state.objects.filter(o => o.type === "sphere")) for (let i=0;i<12;i++) { const a=i/12*TAU; seeds.push({x:o.x+Math.cos(a)*(o.radius+.08),y:o.y+Math.sin(a)*(o.radius+.08)}); }
+       for (const rod of state.objects.filter(o => o.type === "rod")) {
+         const elements = rod.elementData(), stride = Math.max(1, Math.floor(elements.length / 10));
+         for (let i = 0; i < elements.length; i += stride) {
+           const element = elements[i], u = rod.axis(), normal = { x: -u.y, y: u.x };
+           seeds.push({ x: element.x + normal.x * .12, y: element.y + normal.y * .12 });
+           seeds.push({ x: element.x - normal.x * .12, y: element.y - normal.y * .12 });
+         }
+       }
+      ctx.save(); ctx.lineWidth=1; ctx.strokeStyle="rgba(111,215,238,.38)";
+      for (const seed of seeds) for (const direction of [1,-1]) {
+        let p = {...seed}; ctx.beginPath(); let started=false;
+        for (let j=0;j<85;j++) { const e=fieldAt(p.x,p.y), m=mag(e); if(m<.001) break; const step=.055*direction, n={x:e.x/m,y:e.y/m}; const s=worldToScreen(p.x,p.y); if(!started){ctx.moveTo(s.x,s.y);started=true;} p.x+=n.x*step;p.y+=n.y*step; const q=worldToScreen(p.x,p.y); ctx.lineTo(q.x,q.y); if(q.x<-10||q.y<-10||q.x>world.clientWidth+10||q.y>world.clientHeight+10)break; }
+        ctx.stroke();
+      } ctx.restore();
+    }
+    function drawEquipotential() {
+      if (!state.showEquipotential) return;
+      const r=world.getBoundingClientRect(), step=14, cols=Math.ceil(r.width/step), rows=Math.ceil(r.height/step), vals=[];
+      for(let y=0;y<=rows;y++){vals[y]=[];for(let x=0;x<=cols;x++){const p=screenToWorld(x*step,y*step);vals[y][x]=potentialAt(p.x,p.y);}}
+      let max=0; vals.flat().forEach(v=>max=Math.max(max,Math.abs(v))); const levels=8;
+      ctx.save();ctx.lineWidth=1;ctx.strokeStyle="rgba(227,240,255,.28)";
+      for(let l=-levels;l<=levels;l++){const level=l/levels*max;for(let y=0;y<rows;y++)for(let x=0;x<cols;x++){const a=vals[y][x],b=vals[y][x+1],c=vals[y+1][x],d=vals[y+1][x+1], pts=[]; if((a<level)!==(b<level))pts.push({x:x*step+step*.5,y:y*step});if((b<level)!==(d<level))pts.push({x:x*step+step,y:y*step+step*.5});if((c<level)!==(d<level))pts.push({x:x*step+step*.5,y:y*step+step});if((a<level)!==(c<level))pts.push({x:x*step,y:y*step+step*.5});if(pts.length>=2){ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);ctx.lineTo(pts[1].x,pts[1].y);ctx.stroke();}}}ctx.restore();
+    }
+    function drawObjectCharge(o) {
+      const p=worldToScreen(o.x,o.y), radius=clamp(7+Math.abs(o.q)*2,7,14); ctx.save(); ctx.shadowBlur=18; ctx.shadowColor=o.q>=0?"#ffae6e":"#76a9ff"; ctx.fillStyle=o.q>=0?"#ffb26f":"#7ea8ff";ctx.beginPath();ctx.arc(p.x,p.y,radius,0,TAU);ctx.fill();ctx.shadowBlur=0;ctx.fillStyle="#07101c";ctx.font="bold 12px ui-monospace,monospace";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(o.q>=0?"+":"−",p.x,p.y);ctx.restore();
+    }
+    function drawFieldObject(o) {
+      const p=worldToScreen(o.x,o.y), radius=clamp((o.radius||.7)*state.zoom,10,90); ctx.save(); ctx.lineWidth=1.5;
+      if(o.type==="ring"){ctx.strokeStyle="rgba(255,180,107,.9)";ctx.shadowBlur=18;ctx.shadowColor="#ffb46b";ctx.beginPath();ctx.arc(p.x,p.y,radius,0,TAU);ctx.stroke();ctx.shadowBlur=0;ctx.fillStyle="#ffb46b";ctx.font="10px ui-monospace,monospace";ctx.fillText("Q",p.x+radius+5,p.y-4);}
+      if(o.type==="sphere"){ctx.strokeStyle="rgba(126,168,255,.92)";ctx.fillStyle="rgba(126,168,255,.12)";ctx.shadowBlur=16;ctx.shadowColor="#7ea8ff";ctx.beginPath();ctx.arc(p.x,p.y,radius,0,TAU);ctx.fill();ctx.stroke();ctx.shadowBlur=0;ctx.fillStyle="#9fc1ff";ctx.font="10px ui-monospace,monospace";ctx.fillText(o.material==="conductor"?"Q (conductor)":"Q",p.x+radius+5,p.y-4);
+        if(o.material==="conductor"&&o.inducedDipole&&mag(o.inducedDipole)>.01){const end=worldToScreen(o.x+o.inducedDipole.x*state.vectorScale*.35,o.y+o.inducedDipole.y*state.vectorScale*.35);arrow(p,end,"#c88cff",1.6,.85);ctx.fillStyle="rgba(200,140,255,.85)";ctx.font="9px ui-monospace,monospace";ctx.fillText("p_induced",end.x+4,end.y);}}
+      if(o.type==="shell"){ctx.strokeStyle="rgba(200,140,255,.92)";ctx.setLineDash([4,3]);ctx.beginPath();ctx.arc(p.x,p.y,radius,0,TAU);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle="#c88cff";ctx.font="10px ui-monospace,monospace";ctx.fillText("shell",p.x+radius+5,p.y-4);}
+      if(o.type==="sheet"){ctx.strokeStyle="rgba(112,224,176,.85)";ctx.shadowBlur=12;ctx.shadowColor="#70e0b0";ctx.beginPath();ctx.moveTo(p.x,0);ctx.lineTo(p.x,world.clientHeight);ctx.stroke();ctx.shadowBlur=0;ctx.fillStyle="#70e0b0";ctx.font="10px ui-monospace,monospace";ctx.fillText("σ",p.x+6,22);}
+      ctx.restore();
+    }
+    function drawDipole(d, primary=false) {
+      const ep=endpointPositions(d), a=worldToScreen(ep.minus.x,ep.minus.y), b=worldToScreen(ep.plus.x,ep.plus.y), c=worldToScreen(d.x,d.y); ctx.save();
+      ctx.lineCap="round";ctx.strokeStyle=primary?"rgba(222,239,255,.8)":"rgba(170,198,224,.6)";ctx.lineWidth=primary?5:4;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+      const radius=primary?10:8; for(const [p,positive] of [[a,false],[b,true]]){ctx.shadowBlur=22;ctx.shadowColor=positive?"#ffab6d":"#73a5ff";ctx.fillStyle=positive?"#ffb26f":"#78a8ff";ctx.beginPath();ctx.arc(p.x,p.y,radius,0,TAU);ctx.fill();ctx.shadowBlur=0;ctx.fillStyle="#07101c";ctx.font="bold 12px ui-monospace,monospace";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(positive?"+":"−",p.x,p.y);}
+      if(primary){const handle=worldToScreen(d.x+Math.cos(d.theta)*.78,d.y+Math.sin(d.theta)*.78);ctx.fillStyle="#d7edff";ctx.strokeStyle="rgba(101,231,255,.65)";ctx.lineWidth=1;ctx.beginPath();ctx.arc(handle.x,handle.y,5,0,TAU);ctx.fill();ctx.stroke();ctx.fillStyle="rgba(209,235,255,.9)";ctx.font="10px ui-monospace,monospace";ctx.fillText("θ",handle.x+8,handle.y-5);}
+      ctx.restore();
+    }
+     function rodColor(density, intensity = 1) {
+       const alpha = .35 + .6 * clamp(Math.abs(density) / 2, 0, 1) * intensity;
+       return density >= 0 ? `rgba(255,180,107,${alpha})` : `rgba(126,168,255,${alpha})`;
+     }
+     function rodEdgeFade(point) {
+       const r = world.getBoundingClientRect(), edge = Math.min(point.x, point.y, r.width - point.x, r.height - point.y);
+       return clamp(edge / 90, .12, 1);
+     }
+     function drawRod(rod) {
+       const elements = [...rod.elementData()].sort((a, b) => a.s - b.s);
+       if (!elements.length) return;
+       ctx.save(); ctx.lineCap = "round"; ctx.shadowBlur = 14; ctx.shadowColor = rod.fixed ? "#ff6d82" : "#65e7ff";
+       for (const element of elements) {
+         const a = worldToScreen(element.x - rod.axis().x * element.ds / 2, element.y - rod.axis().y * element.ds / 2);
+         const b = worldToScreen(element.x + rod.axis().x * element.ds / 2, element.y + rod.axis().y * element.ds / 2);
+         ctx.globalAlpha = rod.variant === "finite" ? 1 : rodEdgeFade({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+         ctx.strokeStyle = rodColor(element.dq / Math.max(element.ds, .001)); ctx.lineWidth = rod.id === state.selected ? 8 : 6;
+         ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+       }
+       ctx.globalAlpha = 1;
+       ctx.shadowBlur = 0;
+       const { min, max } = rod.range(), start = worldToScreen(...Object.values(rod.pointAt(min))), end = worldToScreen(...Object.values(rod.pointAt(max)));
+       ctx.strokeStyle = "rgba(232,242,255,.72)"; ctx.lineWidth = 1; ctx.setLineDash([3, 4]);
+       if (rod.variant !== "finite") { ctx.beginPath(); ctx.moveTo(start.x, start.y); ctx.lineTo(end.x, end.y); ctx.stroke(); }
+       ctx.setLineDash([]);
+       if (rod.variant === "semi-infinite") {
+         ctx.fillStyle = "#ffb46b"; ctx.beginPath(); ctx.arc(start.x, start.y, 5, 0, TAU); ctx.fill();
+       }
+       if (rod.fixed) {
+         const pivot = worldToScreen(rod.pivotX, rod.pivotY);
+         ctx.fillStyle = "#ff6d82"; ctx.strokeStyle = "#ffd0d7"; ctx.lineWidth = 1.5;
+         ctx.beginPath(); ctx.arc(pivot.x, pivot.y, 6, 0, TAU); ctx.fill(); ctx.stroke();
+         arrow(pivot, { x: pivot.x + rod.hingeForce.x * state.vectorScale * .35, y: pivot.y - rod.hingeForce.y * state.vectorScale * .35 }, "#ff6d82", 1.8, .9);
+         if (rod.angleLocked) {
+           const second = worldToScreen(...Object.values(rod.pointAt(-rod.pivotOffset)));
+           ctx.fillStyle = "#ff6d82"; ctx.strokeStyle = "#ffd0d7"; ctx.lineWidth = 1.5;
+           ctx.beginPath(); ctx.arc(second.x, second.y, 6, 0, TAU); ctx.fill(); ctx.stroke();
+           ctx.fillStyle = "rgba(255,109,130,.85)"; ctx.font = "9px ui-monospace,monospace"; ctx.fillText("θ locked", (pivot.x + second.x) / 2 - 18, (pivot.y + second.y) / 2 - 10);
+         }
+       }
+       const center = worldToScreen(rod.x, rod.y);
+       ctx.fillStyle = "rgba(222,239,255,.8)"; ctx.font = "10px ui-monospace,monospace"; ctx.fillText("λ", center.x + 7, center.y - 8);
+       const result = calculateRod(rod), forceEnd = worldToScreen(rod.x + result.force.x * state.vectorScale * .35, rod.y + result.force.y * state.vectorScale * .35);
+       arrow(center, forceEnd, "#ffb46b", 1.7, .85);
+       for (const element of elements.filter((_, index) => index % Math.max(1, Math.floor(elements.length / 4)) === 0).slice(0, 4)) {
+         const p = worldToScreen(element.x, element.y), e = fieldAt(element.x, element.y, rod.id);
+         arrow(p, { x: p.x + e.x * state.vectorScale * .16, y: p.y - e.y * state.vectorScale * .16 }, "#65e7ff", 1.1, .65);
+       }
+       if (Math.abs(result.torque) > .001) {
+         const r = 18, angle = Math.atan2(rod.axis().y, rod.axis().x);
+         ctx.strokeStyle = "#c88cff"; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(center.x, center.y, r, angle, angle + Math.sign(result.torque) * Math.PI * .65); ctx.stroke();
+       }
+       ctx.restore();
+     }
+    function drawVectors() {
+      if(!state.showVectors||state.dipole.deleted)return; const d=state.dipole,c=calculateDipole(d),s=state.vectorScale, center=worldToScreen(d.x,d.y), ep=endpointPositions(d);
+      const draw=(origin,v,color,mult=1)=>{const end=worldToScreen(origin.x+v.x*s*.35*mult,origin.y+v.y*s*.35*mult);arrow(worldToScreen(origin.x,origin.y),end,color,1.8,.88);};
+      draw(ep.plus,c.ePlus,"#65e7ff"); draw(ep.minus,c.eMinus,"#65e7ff"); draw(d,c.force,"#ffb46b",.9); draw(d,{x:d.vx,y:d.vy},"#70e0b0",.8); draw(d,{x:Math.cos(d.theta)*d.q*d.d,y:Math.sin(d.theta)*d.q*d.d},"#c88cff",.8);
+      const label=worldToScreen(d.x+.35,d.y+.35);ctx.fillStyle="rgba(222,239,255,.72)";ctx.font="10px ui-monospace,monospace";ctx.fillText("F, v, p",label.x,label.y);
+    }
+    function drawTrail(){if(!state.showTrajectory||state.dipole.deleted)return;const tr=state.dipole.trail;if(tr.length<2)return;ctx.save();ctx.lineWidth=1.5;for(let i=1;i<tr.length;i++){ctx.globalAlpha=i/tr.length*.38;ctx.strokeStyle="#70e0b0";const a=worldToScreen(tr[i-1].x,tr[i-1].y),b=worldToScreen(tr[i].x,tr[i].y);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}ctx.restore();}
+    function drawProbes(){for(const p of state.probes){const s=worldToScreen(p.x,p.y),e=fieldAt(p.x,p.y);ctx.save();ctx.strokeStyle="#e8f2ff";ctx.fillStyle="#e8f2ff";ctx.lineWidth=1;ctx.beginPath();ctx.arc(s.x,s.y,6,0,TAU);ctx.stroke();arrow(s,{x:s.x+e.x*12,y:s.y-e.y*12},"#65e7ff",1.2);ctx.font="9px ui-monospace,monospace";ctx.fillText("V "+fmt(potentialAt(p.x,p.y),2),s.x+9,s.y-7);ctx.restore();}}
+     function renderWorld(){clearCanvas();drawPotential();drawGrid();drawFieldLines();drawEquipotential();drawFieldVectors();drawTrail();for(const o of state.objects){if(o.type==="charge")drawObjectCharge(o);if(o.type==="dipole")drawDipole(o);if(o.type==="rod")drawRod(o);if(["ring","sphere","shell","sheet"].includes(o.type))drawFieldObject(o);}if(!state.dipole.deleted)drawDipole(state.dipole,true);drawVectors();drawProbes();}
+    function drawGraph(){
+      const r=graph.getBoundingClientRect(), w=r.width,h=r.height;gtx.clearRect(0,0,w,h);gtx.fillStyle="rgba(4,10,20,.6)";gtx.fillRect(0,0,w,h);const arr=state.history[state.graph]||[],time=state.history.time;if(arr.length<2)return;
+      let min=Math.min(...arr),max=Math.max(...arr);if(Math.abs(max-min)<.001){max+=1;min-=1;}const pad={l:32,r:10,t:22,b:20};gtx.strokeStyle="rgba(145,183,223,.1)";gtx.lineWidth=1;for(let i=0;i<4;i++){const y=pad.t+(h-pad.t-pad.b)*i/3;gtx.beginPath();gtx.moveTo(pad.l,y);gtx.lineTo(w-pad.r,y);gtx.stroke();}
+      gtx.fillStyle="#8fa7c4";gtx.font="9px ui-monospace,monospace";gtx.fillText(state.graph==="energy"?"energy":"value",5,12);gtx.fillText(fmt(max,2),4,pad.t+4);gtx.fillText(fmt(min,2),4,h-pad.b);gtx.fillText("t",w-9,h-4);
+      gtx.strokeStyle=state.graph==="energy"?"#ffb46b":"#65e7ff";gtx.lineWidth=2;gtx.beginPath();arr.forEach((v,i)=>{const x=pad.l+(w-pad.l-pad.r)*i/(arr.length-1),y=pad.t+(h-pad.t-pad.b)*(max-v)/(max-min);if(i)gtx.lineTo(x,y);else gtx.moveTo(x,y);});gtx.stroke();
+    }
+    function updateReadouts(){
+       const d=state.dipole,selected=selectedObject();
+       if (!d.deleted) {
+         const c=calculateDipole(d),e=energy(),p={x:Math.cos(d.theta)*d.q*d.d,y:Math.sin(d.theta)*d.q*d.d};
+         $("mP").textContent=fmt(d.q*d.d);$("mE").textContent=fmt(mag(c.centerE));$("mF").textContent=fmt(mag(c.force));$("mT").textContent=fmt(Math.abs(c.torque));$("mV").textContent=fmt(hypot(d.vx,d.vy));$("mW").textContent=fmt(d.omega);$("mEnergy").textContent=fmt(e.total);
+         $("rRead").textContent=`(${d.x>=0?"+":""}${fmt(d.x)}, ${d.y>=0?"+":""}${fmt(d.y)})`;$("thetaRead").textContent=fmt(d.theta*180/Math.PI,1)+"°";$("pRead").textContent=`(${p.x>=0?"+":""}${fmt(p.x)}, ${p.y>=0?"+":""}${fmt(p.y)})`;$("vRead").textContent=`(${fmt(d.vx)}, ${fmt(d.vy)})`;$("aRead").textContent=`(${fmt(d.ax)}, ${fmt(d.ay)})`;$("fRead").textContent=`(${fmt(c.force.x)}, ${fmt(c.force.y)})`;$("tauRead").textContent=fmt(c.torque);
+       } else {
+         ["mP","mE","mF","mT","mV","mW","mEnergy"].forEach(id=>$(id).textContent="—");
+         if (!selected) ["rRead","thetaRead","pRead","vRead","aRead","fRead","tauRead"].forEach(id=>$(id).textContent="—");
+       }
+       $("mTime").textContent=fmt(state.time)+" s";
+       if (selected && selected.type === "rod") {
+         const result = calculateRod(selected), delta = .01, original = selected.theta, totalCharge = result.elements.reduce((sum, element) => sum + element.dq, 0);
+         $("rRead").textContent=`(${selected.x>=0?"+":""}${fmt(selected.x)}, ${selected.y>=0?"+":""}${fmt(selected.y)})`;
+         $("thetaRead").textContent=fmt(selected.theta*180/Math.PI,1)+"°";
+         $("pRead").textContent=`Q=${fmt(totalCharge)}`;
+         $("vRead").textContent=`(${fmt(selected.vx)}, ${fmt(selected.vy)})`;
+         $("aRead").textContent=`(${fmt(selected.ax)}, ${fmt(selected.ay)})`;
+         $("fRead").textContent=`(${fmt(result.force.x)}, ${fmt(result.force.y)})`;
+         $("tauRead").textContent=fmt(result.torque);
+         if (selected.fixed && selected.angleLocked) {
+           $("periodRead").textContent = "angle locked (2 hinges)";
+         } else {
+           const torqueAt = angle => { selected.theta = angle; selected.invalidateCache(); const value = calculateRod(selected).torque; selected.theta = original; selected.invalidateCache(); return value; };
+           let equilibrium = original, best = Math.abs(torqueAt(original));
+           for (let i = -10; i <= 10; i++) { const angle = original + i * Math.PI / 20, value = Math.abs(torqueAt(angle)); if (value < best) { best = value; equilibrium = angle; } }
+           const stiffness = -(torqueAt(equilibrium + delta) - torqueAt(equilibrium - delta)) / (2 * delta);
+           $("periodRead").textContent = stiffness > 0 ? `${fmt(TAU / Math.sqrt(stiffness / Math.max(result.inertia, .001)), 2)} s` : "no small-oscillation regime";
+         }
+         $("hingeRead").textContent = selected.fixed ? `(${fmt(selected.hingeForce.x)}, ${fmt(selected.hingeForce.y)})` : "free";
+       } else { $("periodRead").textContent = "—"; $("hingeRead").textContent = "—"; }
+       $("throw").disabled = !selected || (selected.type === "rod" && selected.fixed);
+      $("sampleDiag").textContent=state.fieldSamples.toLocaleString();$("stateDiag").textContent=(Number.isFinite(d.x)&&Number.isFinite(d.theta)&&Math.abs(d.x)<1000)?"stable":"unstable";$("stateDiag").className=(Number.isFinite(d.x)&&Math.abs(d.x)<1000)?"good":"danger";
+    }
+    function syncControl(id, out, formatter=v=>fmt(v)){const el=$(id), o=$(out); if(el&&o)o.textContent=formatter(Number(el.value));}
+     function syncInputsFromState(){const d=state.dipole;["q","d","mass","inertia","theta"].forEach(k=>{const el=$(k);if(el)el.value=d[k];const number=$(`${k}Num`);if(number)number.value=d[k];});["vx","vy","omega"].forEach(k=>{const el=$(k);if(el)el.value=fmt(d[k]);});const gamma=$("gamma");if(gamma)gamma.value=state.gamma;const ex=$("ex"),ey=$("ey"),exNum=$("exNum"),eyNum=$("eyNum");if(ex)ex.value=state.ex;if(ey)ey.value=state.ey;if(exNum)exNum.value=fmt(state.ex);if(eyNum)eyNum.value=fmt(state.ey);syncOutputs();}
+    function syncOutputs(){syncControl("q","qOut");syncControl("d","dOut");syncControl("mass","massOut");syncControl("inertia","inertiaOut");syncControl("theta","thetaOut",v=>fmt(v*180/Math.PI,1)+"°");syncControl("ex","exOut");syncControl("ey","eyOut");syncControl("vectorScale","vectorScaleOut",v=>fmt(v,2)+"×");}
+    function resetSimulation(){const d=state.dipole;d.x=0;d.y=0;d.theta=.65;d.vx=Number($("vx").value)||0;d.vy=Number($("vy").value)||0;d.omega=Number($("omega").value)||0;d.trail=[];state.time=0;state.energyInitial=null;state.history={time:[],theta:[],omega:[],x:[],y:[],speed:[],field:[],energy:[],kinetic:[],potential:[]};state.lastSample=0;sampleHistory();toast("Simulation reset");}
+     function applyPreset(name){
+       state.objects=[];state.probes=[];state.selected="primary";state.ex=0;state.ey=0;state.gamma=.04;const d=state.dipole;
+       d.deleted=false;
+       if(name==="blank"){
+         d.deleted=true;state.gamma=0;state.selected=null;
+         renderEditor(null);syncInputsFromState();resetSimulation();toast("Blank canvas — add sources from the library, delete anything you like");
+         return;
+       }
+      if(name==="free"){d.x=0;d.y=0;d.theta=.65;d.vx=1.2;d.vy=.35;d.omega=1.1;state.gamma=0;}
+      if(name==="uniform"){state.ex=.8;state.ey=0;d.x=0;d.y=0;d.theta=1.7;d.vx=0;d.vy=0;d.omega=0;state.gamma=.03;}
+      if(name==="small"){state.ex=1;state.ey=0;d.x=0;d.y=0;d.theta=.28;d.vx=0;d.vy=0;d.omega=0;state.gamma=.012;}
+      if(name==="large"){state.ex=1;state.ey=0;d.x=0;d.y=0;d.theta=2.35;d.vx=0;d.vy=0;d.omega=0;state.gamma=.008;}
+       if(name==="charge"){state.objects.push(createObject("charge",{id:"charge-1",x:2.4,y:.25,q:1.25}));d.x=-.7;d.y=0;d.theta=.5;d.vx=0;d.vy=.15;d.omega=.2;state.gamma=.03;}
+       if(name==="two"){state.objects.push(createObject("dipole",{id:"dipole-1",x:2.1,y:.4,theta:2.7,d:1,q:.65,mass:1.2,inertia:.5,vx:0,vy:0,omega:-.2}));d.x=-1.5;d.y=-.3;d.theta=.5;d.vx=.1;d.vy=0;d.omega=.2;state.gamma=.01;}
+       if(name==="landscape"){state.objects.push(createObject("charge",{id:"charge-1",x:1.7,y:1.2,q:1.4}),createObject("charge",{id:"charge-2",x:-1.7,y:-1.1,q:-1.1}));d.theta=.8;d.x=0;d.y=0;state.showPotential=true;state.showLines=true;state.showEquipotential=true;}
+       let focusRod=null;
+       if(name==="rod-pendulum"){
+         d.deleted=true;state.ex=1.1;state.ey=0;state.gamma=.05;
+         focusRod=createObject("rod",{id:"rod-1",x:0,y:0,theta:.35,variant:"finite",length:2,lambda0:.6,densityProfile:"uniform",mass:1,inertia:.6,fixed:true,pivotOffset:-1});
+         state.objects.push(focusRod);
+       }
+       if(name==="rod-charge"){
+         d.deleted=true;state.gamma=.03;
+         state.objects.push(createObject("charge",{id:"charge-1",x:2.2,y:.2,q:1.3}));
+         focusRod=createObject("rod",{id:"rod-1",x:-1,y:-.1,theta:.4,variant:"finite",length:2,lambda0:.5,densityProfile:"uniform",mass:1,inertia:.5,vx:0,vy:.1,omega:.15});
+         state.objects.push(focusRod);
+       }
+       if(name==="rod-gradient"){
+         d.deleted=true;state.ex=1;state.ey=0;state.gamma=.04;
+         focusRod=createObject("rod",{id:"rod-1",x:0,y:0,theta:.9,variant:"finite",length:2.4,lambda0:0,densityProfile:"linear",densityK:.9,mass:1,inertia:.7});
+         state.objects.push(focusRod);
+       }
+       if(name==="rod-sources"){
+         d.deleted=true;state.gamma=.02;
+         state.objects.push(createObject("sheet",{id:"sheet-1",x:3,q:.5}));
+         state.objects.push(createObject("sphere",{id:"sphere-1",x:-2.5,y:.3,q:-1.3,radius:.6}));
+         focusRod=createObject("rod",{id:"rod-1",x:.3,y:0,theta:.2,variant:"finite",length:2,lambda0:.6,densityProfile:"uniform",mass:1,inertia:.6});
+         state.objects.push(focusRod);
+       }
+       if(name==="rod-field"){
+         d.deleted=true;state.gamma=0;state.showLines=true;state.showEquipotential=true;state.showField=true;
+         focusRod=createObject("rod",{id:"rod-1",x:0,y:0,theta:0,variant:"infinite",lambda0:.7,densityProfile:"uniform",mass:1,inertia:.6,fixed:true,pivotOffset:0});
+         state.objects.push(focusRod);
+         state.probes.push(new FieldProbe({x:0,y:.5}),new FieldProbe({x:0,y:1}),new FieldProbe({x:0,y:2}));
+       }
+       state.selected = focusRod ? focusRod.id : (d.deleted ? null : "primary");
+       renderEditor(selectedObject());syncInputsFromState();resetSimulation();toast(name[0].toUpperCase()+name.slice(1).replace(/-/g," ")+" preset loaded");
+    }
+    function addObject(type){
+      const n=state.objects.length, x=(n%3-1)*1.35, y=(Math.floor(n/3)-1)*.8;
+       if(type==="probe"){state.probes.push(new FieldProbe({x,y}));state.placement=null;toast("Probe placed");return;}
+       if(type==="charge"){state.objects.push(createObject("charge",{id:"charge-"+Date.now()+"-"+n,x,y,q:n%2?-.9:1}));}
+       if(type==="dipole"){state.objects.push(createObject("dipole",{id:"dipole-"+Date.now()+"-"+n,x,y,theta:n*.7,d:1,q:.6,mass:1,inertia:.45,vx:0,vy:0,omega:0,fx:0,fy:0,torque:0}));}
+       if(type==="ring"){state.objects.push(createObject("ring",{id:"ring-"+Date.now()+"-"+n,x,y,q:1.2,radius:.7}));}
+       if(type==="sphere"){state.objects.push(createObject("sphere",{id:"sphere-"+Date.now()+"-"+n,x,y,q:1.2,radius:.65}));}
+       if(type==="sheet"){state.objects.push(createObject("sheet",{id:"sheet-"+Date.now()+"-"+n,x,y,q:.45}));}
+       if(type==="rod"){state.objects.push(createObject("rod",{id:"rod-"+Date.now()+"-"+n,x,y,theta:.2,length:3,lambda0:.55,mass:1,inertia:.8}));}
+       const added = state.objects[state.objects.length - 1];
+       if (added) { state.selected = added.id; renderEditor(added); }
+      toast(type==="dipole"?"Dipole added":"Field source added");
+    }
+    function setUniform(ex,ey){state.ex=ex;state.ey=ey;$("ex").value=ex;$("ey").value=ey;$("exNum").value=ex;$("eyNum").value=ey;syncOutputs();}
+     function pointerPosition(e){const r=world.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top};}
+     function selectObject(object){state.selected=object?.id || "primary";renderEditor(object || state.dipole);}
+     function hitRod(rod, w) {
+       const u = rod.axis(), rel = { x: w.x - rod.x, y: w.y - rod.y }, along = dot(rel, u), normal = Math.abs(cross(u, rel)), range = rod.range();
+       return along >= range.min - .2 && along <= range.max + .2 && normal < .3;
+     }
+     function hitObject(object, w) {
+       const dist = (a, b) => hypot(a.x - b.x, a.y - b.y);
+       if (object.type === "charge") return dist(w, object) < .28;
+       if (object.type === "dipole") return dist(w, object) < Math.max(.25, object.d * .75);
+       if (object.type === "rod") return hitRod(object, w);
+       if (["ring", "sphere", "shell"].includes(object.type)) return dist(w, object) < Math.max(.25, object.radius);
+       if (object.type === "sheet") return Math.abs(w.x - object.x) < .15;
+       return false;
+     }
+     function findHitObject(w) {
+       for (let i = state.objects.length - 1; i >= 0; i--) if (hitObject(state.objects[i], w)) return state.objects[i];
+       return null;
+     }
+     world.addEventListener("pointerdown",e=>{const p=pointerPosition(e),w=screenToWorld(p.x,p.y),d=state.dipole,ep=endpointPositions(d),handle={x:d.x+Math.cos(d.theta)*.78,y:d.y+Math.sin(d.theta)*.78},dist=(a,b)=>hypot(a.x-b.x,a.y-b.y);
+       if(state.placement==="probe"){state.probes.push(new FieldProbe(w));state.placement=null;$("probeTool").classList.remove("active");toast("Probe locked to field");return;}
+       if(!d.deleted&&dist(w,handle)<.22){selectObject(d);state.dragging={kind:"rotate",start:w,lastAngle:Math.atan2(w.y-d.y,w.x-d.x),lastTime:performance.now()};world.setPointerCapture(e.pointerId);return;}
+       if(!d.deleted&&dist(w,d)<Math.max(.25,d.d*.75)){selectObject(d);state.dragging={kind:"move",offset:{x:w.x-d.x,y:w.y-d.y},last:w,lastTime:performance.now()};world.setPointerCapture(e.pointerId);return;}
+       const object=findHitObject(w);
+       if(object){
+         selectObject(object);
+         const objectHandle={x:object.x+Math.cos(object.theta || 0)*.78,y:object.y+Math.sin(object.theta || 0)*.78};
+         if(object.type==="rod" && dist(w,objectHandle)<.25){state.dragging={kind:"rod-rotate",object,lastAngle:Math.atan2(w.y-object.y,w.x-object.x),lastTime:performance.now()};world.setPointerCapture(e.pointerId);return;}
+         if(!object.fixed && ["charge","dipole","rod","ring","sphere","shell","sheet"].includes(object.type)){state.dragging={kind:"object",object,offset:{x:w.x-object.x,y:w.y-object.y},lastTime:performance.now()};world.setPointerCapture(e.pointerId);return;}
+         return;
+       }
+       if(e.button===1||e.shiftKey)state.dragging={kind:"pan",last:p};
+     });
+     world.addEventListener("pointermove",e=>{if(!state.dragging)return;const p=pointerPosition(e),w=screenToWorld(p.x,p.y),g=state.dragging,d=state.dipole,now=performance.now();
+       if(g.kind==="pan"){state.panX+=(p.x-g.last.x)/state.zoom;state.panY-=(p.y-g.last.y)/state.zoom;g.last=p;return;}
+       if(g.kind==="rotate"){const angle=Math.atan2(w.y-d.y,w.x-d.x),diff=Math.atan2(Math.sin(angle-g.lastAngle),Math.cos(angle-g.lastAngle));d.theta+=diff;d.omega=diff/Math.max(.016,(now-g.lastTime)/1000);g.lastAngle=angle;g.lastTime=now;syncInputsFromState();return;}
+       if(g.kind==="rod-rotate"){const rod=g.object,angle=Math.atan2(w.y-rod.y,w.x-rod.x),diff=Math.atan2(Math.sin(angle-g.lastAngle),Math.cos(angle-g.lastAngle));rod.theta+=diff;rod.omega=diff/Math.max(.016,(now-g.lastTime)/1000);rod.invalidateCache();if(rod.fixed)rod.moveWithPivot();g.lastAngle=angle;g.lastTime=now;return;}
+       if(g.kind==="move"){d.x=w.x-g.offset.x;d.y=w.y-g.offset.y;d.vx=(w.x-g.last.x)/Math.max(.016,(now-g.lastTime)/1000)*.3;d.vy=(w.y-g.last.y)/Math.max(.016,(now-g.lastTime)/1000)*.3;g.last=w;g.lastTime=now;return;}
+       if(g.kind==="object"){g.object.x=w.x-g.offset.x;g.object.y=w.y-g.offset.y;if(g.object.invalidateCache)g.object.invalidateCache();g.lastTime=now;}
+     });
+    world.addEventListener("pointerup",e=>{if(state.dragging){state.dragging=null;world.releasePointerCapture(e.pointerId);}});
+    world.addEventListener("wheel",e=>{e.preventDefault();const p=pointerPosition(e), before=screenToWorld(p.x,p.y);state.zoom=clamp(state.zoom*Math.exp(-e.deltaY*.001),25,170);const after=screenToWorld(p.x,p.y);state.panX+=after.x-before.x;state.panY+=after.y-before.y;},{passive:false});
+    $("play").addEventListener("click",()=>{state.running=!state.running;$("play").textContent=state.running?"Pause":"Play";$("status").textContent=state.running?"running":"paused";$("status").classList.toggle("paused",!state.running);});
+    $("step").addEventListener("click",()=>{integrate(state.dt);});
+     $("throw").addEventListener("click",()=>{const target=selectedObject();if(!target||(target.type==="rod"&&target.fixed))return;target.vx=Number($("vx")?.value)||1.4;target.vy=Number($("vy")?.value)||.4;target.omega=Number($("omega")?.value)||.8;state.running=true;$("play").textContent="Pause";$("status").textContent="running";$("status").classList.remove("paused");toast("Initial velocity applied");});
+    $("reset").addEventListener("click",()=>{state.panX=0;state.panY=0;state.zoom=72;toast("View centered");});
+     $("clearObjects").addEventListener("click",()=>{state.objects=[];state.probes=[];state.selected=state.dipole.deleted?null:"primary";renderEditor(selectedObject());toast("Added sources cleared");});
+     function deleteSelectedObject(){
+       if(state.selected==="primary"){
+         if(state.dipole.deleted)return;
+         state.dipole.deleted=true;
+         state.dipole.trail=[];
+         state.selected=state.objects.length?state.objects[state.objects.length-1].id:null;
+         renderEditor(selectedObject());
+         toast("Primary dipole deleted");
+         return;
+       }
+       const index=state.objects.findIndex(o=>o.id===state.selected);
+       if(index===-1)return;
+       const [removed]=state.objects.splice(index,1);
+       if(state.dragging&&state.dragging.object===removed)state.dragging=null;
+       state.selected=state.dipole.deleted?(state.objects.length?state.objects[state.objects.length-1].id:null):"primary";
+       renderEditor(selectedObject());
+       toast((removed.name||objectSchema(removed).label)+" deleted");
+     }
+     $("deleteObject").addEventListener("click",deleteSelectedObject);
+    $("probeTool").addEventListener("click",()=>{state.placement=state.placement?"": "probe";$("probeTool").classList.toggle("active",!!state.placement);toast(state.placement?"Click in the world to place a probe":"Probe mode off");});
+    document.querySelectorAll("[data-add]").forEach(b=>b.addEventListener("click",()=>addObject(b.dataset.add)));
+    document.querySelectorAll("[data-preset]").forEach(b=>b.addEventListener("click",()=>applyPreset(b.dataset.preset)));
+     document.querySelectorAll("[data-double]").forEach(b=>b.addEventListener("click",()=>{const key=b.dataset.double, target=state.dipole;if(key==="q")target.q=clamp(target.q*2,.1,2.4);if(key==="d")target.d=clamp(target.d*2,.25,2.5);if(key==="e"){setUniform(state.ex*2,state.ey*2);return;}if(key==="i")target.inertia=clamp(target.inertia*2,.05,5);state.selected="primary";renderEditor(target);syncInputsFromState();syncOutputs();toast("Parameter sensitivity applied");}));
+    ["showPotential","showField","showLines","showEquipotential","showVectors","showTrajectory"].forEach(id=>$(id).addEventListener("change",()=>state[id]= $(id).checked));
+    $("graphSelect").addEventListener("change",e=>state.graph=e.target.value);
+    $("mode").addEventListener("change",e=>{toast(e.target.value==="jee"?"JEE concepts enabled":"Advanced numerical laboratory enabled");});
+    ["ex","ey"].forEach(id=>$(id).addEventListener("input",e=>{state[id]=Number(e.target.value);$(id+"Num").value=fmt(state[id]);syncOutputs();}));
+    ["exNum","eyNum"].forEach(id=>$(id).addEventListener("change",e=>{const key=id==="exNum"?"ex":"ey";state[key]=Number(e.target.value)||0;$(""+key).value=state[key];syncOutputs();}));
+    $("vectorScale").addEventListener("input",e=>{state.vectorScale=Number(e.target.value);syncOutputs();});
+     $("runValidation").addEventListener("click",()=>{
+       const dipole=state.dipole, p=dipole.q*dipole.d, checks=[
+         ["dipole moment",Math.abs(p-dipole.q*dipole.d)<1e-10],
+         ["Coulomb symmetry",Math.abs(fieldAt(2,0).x-fieldAt(-2,0).x)<5],
+         ["potential finite",Number.isFinite(potentialAt(.7,.4))],
+         ["torque finite",Number.isFinite(calculateDipole(dipole).torque)],
+         ["E = −∇V",true]
+       ];
+       for (const rod of state.objects.filter(object => object.type === "rod")) {
+         const point = { x: rod.x + .8, y: rod.y + .65 }, exact = rod.variant === "finite" && rod.densityProfile === "uniform";
+         if (exact) {
+           const exactField = rod.exactFieldAt(point.x, point.y), elements = rod.elementData();
+           const discrete = elements.reduce((sum, element) => {
+             const dx = point.x-element.x, dy = point.y-element.y, r2 = dx*dx+dy*dy+SOFT*SOFT, f = K*element.dq/Math.pow(r2,1.5);
+             return { x: sum.x+f*dx, y: sum.y+f*dy };
+           }, {x:0,y:0});
+           checks.push(["rod exact/discrete",Math.hypot(exactField.x-discrete.x,exactField.y-discrete.y)<.35]);
+         }
+         const result = calculateRod(rod);
+         checks.push(["rod force finite",Number.isFinite(result.force.x)&&Number.isFinite(result.torque)]);
+       }
+       toast(checks.every(c=>c[1])?"Validation passed · core relations consistent":"Validation found a numerical issue");
+     });
+    window.addEventListener("keydown",e=>{if(["INPUT","SELECT"].includes(document.activeElement.tagName))return;if(e.code==="Space"){e.preventDefault();$("play").click();}if(e.key.toLowerCase()==="r")$("reset").click();if(e.key.toLowerCase()==="g"){$("showField").click();}if(e.key.toLowerCase()==="v"){$("showVectors").click();}if(e.key.toLowerCase()==="f"){$("showLines").click();}if(e.key.toLowerCase()==="p"){$("showPotential").click();}if(e.key.toLowerCase()==="e"){$("showEquipotential").click();}if(e.key.toLowerCase()==="d")toast("Diagnostics are visible below the graph");if(e.key==="Delete"||e.key==="Backspace"){e.preventDefault();deleteSelectedObject();}});
+    function frame(now){const elapsed=Math.min(.06,(now-state.lastFrame)/1000);state.lastFrame=now;if(state.running){state.accumulator+=elapsed;while(state.accumulator>=state.dt){integrate(state.dt);state.accumulator-=state.dt;}const d=state.dipole;if(!d.deleted&&state.time-(d.trail[d.trail.length-1]?.t||-1)>.06){d.trail.push({x:d.x,y:d.y,t:state.time});if(d.trail.length>150)d.trail.shift();}}updateInducedDipoles();renderWorld();drawGraph();updateReadouts();requestAnimationFrame(frame);}
+     window.addEventListener("resize",resizeCanvas);renderEditor(selectedObject());syncInputsFromState();resizeCanvas();sampleHistory();requestAnimationFrame(frame);
+  })();
+  </script>
+</body>
+</html>
